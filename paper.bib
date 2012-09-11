@@ -1,0 +1,255 @@
+@article{clements2004tail,
+  title={A tail-recursive machine with stack inspection},
+  author={Clements, J. and Felleisen, M.},
+  journal={ACM Transactions on Programming Languages and Systems (TOPLAS)},
+  volume={26},
+  number={6},
+  pages={1029--1052},
+  year={2004},
+  publisher={ACM}
+}
+
+@phdthesis{clements2006portable,
+  title={Portable and high-level access to the stack with Continuation Marks},
+  author={Clements, J.},
+  year={2006},
+  school={Northeastern University Boston},
+  annotate={Clements introduces the programming language feature continuation marks and motivates their use. He provides an operational semantics vis â vis the Scheme interpreter and three concrete applications: an algebraic stepper and a language with security annotations specifically designed to elucidate the behavior of continuation marks in the presence of tail call optimization and demonstrate the feasibility of such optimizations in languages which rely on security annotations already such as C\# and Java.}
+}
+
+@article{hudak1992report,
+  title={Report on the programming language Haskell: a non-strict, purely functional language version 1.2},
+  author={Hudak, P. and Peyton Jones, S. and Wadler, P. and Boutel, B. and Fairbairn, J. and Fasel, J. and Guzm{\'a}n, M.M. and Hammond, K. and Hughes, J. and Johnsson, T. and others},
+  journal={ACM SigPlan notices},
+  volume={27},
+  number={5},
+  pages={1--164},
+  year={1992},
+  publisher={ACM},
+}
+
+@book{jones2003haskell,
+  title={Haskell 98 language and libraries: the revised report},
+  author={Jones, S.P.},
+  year={2003},
+  publisher={Cambridge Univ Pr},
+  annotate={This report describes the lazy, purely functional language Haskell. It establishes the core language and libraries that the Haskell 98 standard encompasses as well as motivations for and modifications of certain definitions. The author documents the inception of Haskell as a unification of the many similar functional languages existent at the time. Our profit here is realized in the stated goal for Haskell to be a research tool in addition to the other roles it should fill.}
+}
+
+@article{liang2009modular,
+  title={Modular Monadic Semantics},
+  author={Liang, S. and Hudak, P.},
+  year={2009},
+  publisher={Citeseer},
+  annotate={Liang, et al. motivate the use of monad for semantic specification by exposing the non-modularity of the commonly used denotational approach. They also discuss monad transformers and the effect of monads on semantics-directed compilation. Most important to this work, they discuss the composition of monads modeling many different features including tracing, assignment, lazy evaluation, continuations, and nondeterminism.}
+}
+
+@book{mac1998categories,
+  title={Categories for the working mathematician},
+  author={Mac Lane, S.},
+  volume={5},
+  year={1998},
+  publisher={Springer verlag},
+  annotate={Saunders Mac Lane is one of a duo who created (or discovered, if you prefer) category theory. The book is derived from lectures delivered by the author at the University of Chicago shortly after the field's inception. Chapter 6 on monads an algebra is particularly relevant to the material related here and applied by Moggi.}
+}
+
+@inproceedings{moggi1989computational,
+  title={Computational lambda-calculus and monads},
+  author={Moggi, E.},
+  booktitle={Logic in Computer Science, 1989. LICS'89, Proceedings., Fourth Annual Symposium on},
+  pages={14--23},
+  year={1989},
+  organization={IEEE},
+  annotate={Moggi introduces an application of the category theoretic monad to computation modeling. He discusses the typical approaches to semantics definition and identifies some of their weaknesses. He offers monads as an alternative approach which is more expressible.}
+}
+
+@book{moggi1990abstract,
+  title={An abstract view of programming languages},
+  author={Moggi, E. and University of Edinburgh. Laboratory for Foundation of Computer Science},
+  year={1990},
+  publisher={University of Edinburgh, Department of Computer Science, Laboratory for Foundations of Computer Science}
+}
+
+@article{moggi1991notions,
+  title={Notions of computation and monads},
+  author={Moggi, E.},
+  journal={Information and computation},
+  volume={93},
+  number={1},
+  pages={55--92},
+  year={1991},
+  publisher={Elsevier},
+  annotate={Moggi continues his exposition on the application of monads to semantics definition with examples for continuations, state, partiality, nondeterminism, etc. He then discusses approaches to reasoning about programming languages and programs in a fixed programming language. He introduces a simple language with a monadic interpretation and explores its semantics.}
+}
+
+@article{wadler1995monads,
+  title={Monads for functional programming},
+  author={Wadler, P.},
+  journal={Advanced Functional Programming},
+  pages={24--52},
+  year={1995},
+  publisher={Springer},
+  annotate={Wadler motivates monads as a design pattern with the development of programs with exceptions, state, and output. He presents an extremely readable exposition of the complications of enhancing pure computation with effects, discusses the disadvantages of typical solutions, and demonstrates the ease with which monads achieve the enhancement. This is coupled with a healthy dose of of rigor to ensure the solutions presented are correct. He also discusses the application of monads to array transformers and parsers.}
+}
+
+@article{queinnec2003inverting,
+  title={Inverting back the inversion of control or, continuations versus page-centric programming},
+  author={Queinnec, C.},
+  journal={ACM SIGPLAN Notices},
+  volume={38},
+  number={2},
+  pages={57--64},
+  year={2003},
+  publisher={ACM},
+  annotate={Queinnec investigates the consequences of describing a web server using a language with first-class continuations. He considers applications in which agents progress through a sequence of submissions and may backtrack or clone sessions at any time. He concludes that web applications should be written as a single program in direct style wherein the state and continuation are implicitly encoded. Interestingly, he also concludes that this is possible in languages with explicit, reified continuations and submits that web languages should offer them.}
+}
+
+@article{findler2010redex,
+  title={Redex: Practical Semantics Engineering},
+  author={Findler, R.B. and Klein, C.},
+  year={2010},
+  annotate={PLT Redex is a domain-specific language for specifying reduction semantics and includes a suite of tools to aide analysis.}
+}
+
+@inproceedings{fischer1972lambda,
+  title={Lambda calculus schemata},
+  author={Fischer, M.J.},
+  booktitle={ACM SIGACT News},
+  volume={7},
+  number={14},
+  pages={104--109},
+  year={1972},
+  organization={ACM},
+  annotate={Fischer introduces a continuation-passing transform as part of this treatise on the $\lambda$-calculus }
+}
+
+@inproceedings{flanagan1993essence,
+  title={The essence of compiling with continuations},
+  author={Flanagan, C. and Sabry, A. and Duba, B.F. and Felleisen, M.},
+  booktitle={ACM SIGPLAN Notices},
+  volume={28},
+  number={6},
+  pages={237--247},
+  year={1993},
+  organization={ACM}
+}
+
+@article{landin1998generalization,
+  title={A generalization of jumps and labels},
+  author={Landin, P.J.},
+  journal={Higher-Order and Symbolic Computation},
+  volume={11},
+  number={2},
+  pages={125--143},
+  year={1998},
+  publisher={Springer}
+}
+
+@article{reynolds1993discoveries,
+  title={The discoveries of continuations},
+  author={Reynolds, J.C.},
+  journal={Lisp and symbolic computation},
+  volume={6},
+  number={3},
+  pages={233--247},
+  year={1993},
+  publisher={Springer}
+}
+
+@phdthesis{sabry1994formal,
+  title={The formal relationship between direct and continuation-passing style optimizing compilers: a synthesis of two paradigms},
+  author={Sabry, A.A.},
+  year={1994},
+  school={Citeseer},
+  annotate={Sabry's dissertation provides a cogent and thorough overview and investigation of the effects of using continuation-passing style as an intermediate language. The focus of the dissertation is the association between typical and CPS transformational compilers. Attention is given to types and reduction schemes that give way to the various $\lambda$-calculi. It is used for its strong, concise conclusions and comprehensive summaries.}
+}
+
+@article{strachey2000continuations,
+  title={Continuations: A mathematical semantics for handling full jumps},
+  author={Strachey, C. and Wadsworth, C.P.},
+  journal={Higher-order and symbolic computation},
+  volume={13},
+  number={1},
+  pages={135--152},
+  year={2000},
+  publisher={Springer}
+}
+
+@article{plotkin1975call,
+  title={Call-by-name, call-by-value and the $\lambda$-calculus},
+  author={Plotkin, G.D.},
+  journal={Theoretical computer science},
+  volume={1},
+  number={2},
+  pages={125--159},
+  year={1975},
+  publisher={Elsevier},
+  annotate={This seminal paper by Plotkin explores the relationship between ISWIM and the $\lambda$-calculus. Consequently, Plotkin visits the call-by-name and call-by-value variations of the $\lambda$-calculus and the simulation of each variant by the other. He uses the ``technique of continuations'' which can provide denotational semantics for call-by-value languages and utilizes $\lambda$-introducing transforms, a progenitor of current CPS transformations, to ease analysis.}
+}
+
+@article{sussman1975interpreter,
+  title={An Interpreter for Extended Lambda Calculus},
+  author={Sussman, G.J. and Steele, G.},
+  year={1975},
+  publisher={Massachusetts Institute of Technology}
+}
+
+@book{appel2007compiling,
+  title={Compiling with continuations},
+  author={Appel, A.W.},
+  year={2007},
+  publisher={Cambridge Univ Pr}
+}
+
+@article{clements2008implementing,
+  title={Implementing continuation marks in JavaScript},
+  author={Clements, J. and Sundaram, A. and Herman, D.},
+  journal={Computer Science and Software Engineering},
+  pages={45},
+  year={2008},
+  annotate={Clements et al. discuss the design and performance of a \emph{JavaScript} continuation marks implementation in terms of stack marks (in accordance with the representation of continuations in the imperative \emph{JavaScript}). They present a subset language of \emph{JavaScript} which they believe includes all critical components of the whole and discuss implementation considerations supporting tail-call optimization. They present a debugger built upon stack marks as is typical of continuation marks. Interestingly, they champion Scheme's hygienic macro system having devoted a portion of their efforts to syntactic manipulation.}
+}
+
+@article{dybvig2005monadic,
+  title={A monadic framework for subcontinuations},
+  author={Dybvig, R.K. and Peyton-Jones, S. and Sabry, A.},
+  journal={J. Funct. Program.(2007, to appear). http://journals. cambridge. org/action/displayIssue},
+  year={2005},
+  publisher={Citeseer}
+}
+
+@inproceedings{pettyjohn2005continuations,
+  title={Continuations from generalized stack inspection},
+  author={Pettyjohn, G. and Clements, J. and Marshall, J. and Krishnamurthi, S. and Felleisen, M.},
+  booktitle={ACM SIGPLAN Notices},
+  volume={40},
+  number={9},
+  pages={216--227},
+  year={2005},
+  organization={ACM},
+  annotate={Pettyjohn et al. present a transformation from a language with \emph{call/cc} to a language without \emph{call/cc} but with the stack inspection mechanisms \emph{w-c-m} and \emph{c-c-m}. They prove essential properties of the transformation which employs a variant of CPS. After reporting on the performance for two real-world applications, they introduce a characterization of generalized stack inspection in terms of exception mechanisms. They accomplish this by expressing \emph{w-c-m} as the installation of an exception handler and \emph{c-c-m} as the raising of an exception. Exception handlers can discriminate based on type which serve as the keys of the continuation marks.}
+}
+
+@techreport{plt-tr1,
+  title       = {Reference: Racket},
+  author      = {Matthew Flatt and PLT},
+  number      = {PLT-TR-2010-1},
+  institution = {PLT Inc.},
+  year        = {2010},
+  note        = {\url{http://racket-lang.org/tr1/}},
+  annotate    = {Racket, formerly PLT Scheme, is a dialect in the Lisp family of languages. It's PLT stewardship has contributed to make it the de facto testbed for new, useful language features--higher-order contracts, for example--to say nothing of properties like its homoiconic syntax. As such, it served as the inaugural host for continuation marks (hence the Scheme-like syntax employed in the paper). Despite being under active development, its sound design keeps it the host language of choice for many small and large systems alike.}
+}
+
+@article{wallach2000safkasi,
+  title={SAFKASI: a security mechanism for language-based systems},
+  author={Wallach, D.S. and Appel, A.W. and Felten, E.W.},
+  journal={ACM Transactions on Software Engineering and Methodology (TOSEM)},
+  volume={9},
+  number={4},
+  pages={341--378},
+  year={2000},
+  publisher={ACM},
+  annotate={SAFKASI is the ``security architecture formerly known as stack inspection''. Wallach et al. present security-passing style which is a CPS-like transformation which reifies and manages security contexts. It is an example of the recharacterization induced by a CPS-like global transform.}
+}
+
+
