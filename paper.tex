@@ -22,19 +22,18 @@
 There are certain tools that are indispensable to some programmers that concern the
 behavior of their programs: debuggers, profilers, steppers, etc. Without these tools,
 these programmers cannot justify the adoption of a language, however compelling it might
-otherwise be. Traditionally, these tools are developed at the same level the 
-language is, privy to incidental implementation detail, precisely because that detail 
-enables these tools to function. This is problematic for at least two reasons. First, 
-it couples the implementation of the tool with the implementation of the language, which
-increases the cost to port to other platforms. If users become dependent upon these tools,
-it can stall the advancement of the language and the adoption of new language features.
-Second and more critical, it makes these tools unsound. For instance, debuggers typically
-examine programs which have been compiled without optimizations. In general, this means 
-that the debugged program has different behavior than the deployed program. This is 
-obviously undesirable.
+otherwise be. Traditionally, these tools are developed at the same level the language is,
+privy to incidental implementation detail, precisely because that detail enables these
+tools to function. This is problematic for at least two reasons. First, it couples the
+implementation of the tool with the implementation of the language, which increases the
+cost to port to other platforms. If users become dependent upon these tools, it can stall
+the advancement of the language and the adoption of new language features. Second and more
+critical, it makes these tools unsound. For instance, debuggers typically examine programs
+which have been compiled without optimizations. In general, this means that the debugged
+program has different behavior than the deployed program. This is obviously undesirable.
 
 It is desirable to implement such tools at the same level as the language, removing
-dependency upon the implementation an instead relying on definitional and behavioral
+dependency upon the implementation and instead relying on definitional and behavioral
 invariants. Continuation marks are a language-level feature that provide the information
 necessary for these tools to function. Furthermore, languages which require stack
 inspection to enforce security policies (\emph{Java}, \emph{C\#}) or support aspect
@@ -46,7 +45,7 @@ inspection mechanism. In fact, the \emph{Java} and \emph{C\#} languages rely on 
 stack inspection to enforce security policies of which continuation marks can be seen as 
 a generalization. Surprisingly, continuation marks can be encoded in any language with 
 exception facilities \cite{pettyjohn2005continuations} which fact has led to their 
-experimental addition to Javascript \cite{clements2008implementing}.
+experimental addition to \emph{JavaScript} \cite{clements2008implementing}.
 
 \section{$\lambda_{cm}$}
 
@@ -59,5 +58,8 @@ experimental addition to Javascript \cite{clements2008implementing}.
 \section{Future Work}
 
 \section{Conclusion}
+
+\bibliographystyle{plain}
+\bibliography{paper}
 
 \end{document}
