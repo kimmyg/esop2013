@@ -1,61 +1,243 @@
 \documentclass{llncs}
 
+\usepackage{amsmath}
+\usepackage{slatex}
+
 \title{A Correct Compiler for Continuation Marks}
 
 \author{Kimball Germane \and Jay McCarthy}
 \institute{Brigham Young University}
+
+% Look at the many other papers on c marks to justify them (see mine for
+% example). Talk about how your transformation is a compiler and right
+% now no language but Racket has C-marks, so we could use this to get
+% them in that language. For Racket though, now they don't need to be
+% built in to the compiler if we don't want. In addition, it makes it
+% easier to do a type system.
+
+\newcommand{\cm}[0]{$\lambda_{cm}$}
+\newcommand{\lv}[0]{$\lambda_v$}
+\newcommand{\lc}[0]{$\lambda$-calculus}
+\newcommand{\wcm}[2]{(\mathrm{wcm}\,#1\,#2)}
+\newcommand{\ccm}[0]{(\mathrm{ccm})}
+\newcommand{\app}[2]{(#1\,#2)}
+\newcommand{\abs}[2]{(\lambda\,(#1)\,#2)}
+\newcommand{\hole}[0]{\bullet}
+\newcommand{\rr}[0]{\rightarrow}
+\newcommand{\lrrs}[0]{\rightarrow^{*}}
+\newcommand{\lvrr}[0]{\rightarrow_v}
+\newcommand{\lvrrs}[0]{\rightarrow_v^{*}}
+\newcommand{\cmrr}[0]{\rightarrow_{cm}}
+\newcommand{\cmrrs}[0]{\rightarrow_{cm}^{*}}
 
 \begin{document}
 
 \maketitle
 
 \begin{abstract}
-
+Continuation marks, a programming language feature which generalizes stack inspection, do not yet enjoy a transformation to the plain $\lambda$-calculus. We present a CPS-like transformation from the call-by-value $\lambda$-calculus augmented with continuation marks to the pure call-by-value $\lambda$-calculus. We discuss how such a transformation would simplify the construction of compilers which treat continuation marks correctly. We document an iterative, feedback-based approach using Redex. We accompany Finally, we verify the transformation with a meaning-preservation theorem.
 \end{abstract}
 
 \section{Introduction}
 
-\section{Related Work}
+Language transformation is useful for a variety of purposes. It can be used to give meaning to the source language in terms of the target language [cite something], provide a characterization more amenable to analysis. Language transformation can also be used to \emph{desugar} a language into a simpler core. This 
+Transforming has the following benefits:
+reduce core code (desugaring, simplifies implementations)
+give meaning to constructs (semantically, as well as, say, macros)
+local transformations - macros, for example
+global transformations - compilers of all kinds, for example
+
+talk about the common practice of analyzing an extension of the lambda calculus, and a subpractice of doing so via a transformation to the core.
+
+While continuation marks have had significant treatment, they do not currently enjoy a transformation to the plain $\lambda$-calculus.
 
 \section{Continuation Marks}
 
-There are certain tools that are indispensable to some programmers that concern the
-behavior of their programs: debuggers, profilers, steppers, etc. Without these tools,
-these programmers cannot justify the adoption of a language, however compelling it might
-otherwise be. Traditionally, these tools are developed at the same level the language is,
-privy to incidental implementation detail, precisely because that detail enables these
-tools to function. This is problematic for at least two reasons. First, it couples the
-implementation of the tool with the implementation of the language, which increases the
-cost to port to other platforms. If users become dependent upon these tools, it can stall
-the advancement of the language and the adoption of new language features. Second and more
-critical, it makes these tools unsound. For instance, debuggers typically examine programs
-which have been compiled without optimizations. In general, this means that the debugged
-program has different behavior than the deployed program. This is obviously undesirable.
+Continuation marks generalize stack inspection, allowing a bevy of features that rely on some form of it to be defined at the language level. This includes algebraic steppers \cite{clements2001modeling}, security policies \cite{clements2004tail}, and aspects \cite{tucker2003pointcuts}.
 
-It is desirable to implement such tools at the same level as the language, removing
-dependency upon the implementation and instead relying on definitional and behavioral
-invariants. Continuation marks are a language-level feature that provide the information
-necessary for these tools to function. Furthermore, languages which require stack
-inspection to enforce security policies (\emph{Java}, \emph{C\#}) or support aspect
-oriented programming (\emph{aspectj}) can be defined in terms of a simpler language with
-continuation marks \cite{clements2004tail}.
+Few languages offer continuation marks. Their inception lay in Racket \cite{plt-tr1} and they have been added experimentally to \emph{JavaScript} \cite{clements2008implementing}, but their adoption by other languages has been nonexistent.
 
-Continuation marks originated in PLT Scheme (now Racket \cite{plt-tr1}) as a stack 
-inspection mechanism. In fact, the \emph{Java} and \emph{C\#} languages rely on a similar 
-stack inspection to enforce security policies of which continuation marks can be seen as 
-a generalization. Surprisingly, continuation marks can be encoded in any language with 
-exception facilities \cite{pettyjohn2005continuations} which fact has led to their 
-experimental addition to \emph{JavaScript} \cite{clements2008implementing}.
+Racket offers desugaring facilities to the user via a powerful macro system. This requires and is limited to local transformations limited to expression boundaries.
 
-\section{$\lambda_{cm}$}
+A transformation-based compiler, such as a CPS compiler \cite{appel2007compiling}, effects a global transformation of the program. This effect discards original source or transforms it so radically that it is suitable only for the levels beneath the programmer's regular interaction.
+
+\section{\cm}
+
+Terms $e$ in \cm\ are defined inductively by
+\begin{align}
+e=\, &\wcm{e}{e}\\
+     &\ccm\\
+     &\app{e}{e}\\
+     &v\\
+     &x
+\end{align}
+where 
+\begin{equation}
+v=\abs{x}{e}
+\end{equation}
+describes the values of the \lc.
+
+The sole novelty of \cm\ above the plain \lc\ is the ability to annotate and observe the continuation. Our evaluation model of \cm, introduced by Pettyjohn et al. \cite{pettyjohn2005continuations}, utilizes the current evaluation context for that purpose. The mutually inductive valuation contexts $E$, $F$ are defined by
+\begin{align}
+E=\, &\wcm{v}{F}\\
+     &F\\
+F=\, &\app{E}{e}\\
+     &\app{v}{E}\\
+     &\wcm{E}{e}\\
+     &\hole
+\end{align}
+where $\hole$ denotes a ``hole'' in the evaluation context, the ultimate destination of the evaluation of the expression that previously resided there.
+
+The semantics of \cm\ are
+\begin{align}
+E[\app{\abs{x}{e}}{v}]  &\rr E[e[x\leftarrow v]]\\
+E[\wcm{v}{\wcm{v'}{e}}] &\rr E[\wcm{v'}{e}]\\
+E[\wcm{v}{v'}]          &\rr E[v']\\
+E[\ccm]                 &\rr E[\chi(E,\abs{x}{\abs{y}{y}})]
+\end{align}
+where the metafunction $\chi$ is defined by
+\begin{align}
+\chi(\wcm{v}{F},vs) &= \chi(F,\abs{z}{\app{\app{z}{v}}{vs}})\\
+\chi(\app{E}{e},vs) &= \chi(E,vs)\\
+\chi(\app{v}{E},vs) &= \chi(E,vs)\\
+\chi(\wcm{E}{e},vs) &= \chi(E,vs)\\
+\chi(\hole,vs)      &= vs
+\end{align}.
 
 \section{Transformation}
 
 \section{Testing}
 
+A pragmatic approach to the discovery of a correct transformation involves consistent feedback and testing to validate candidate transforms. Testing is no substitute for proof, but, as Klein et al. \cite{klein2012run} show, proof is no substitute for testing. Lightweight mechanization is a fruitful middle ground between pencil-and-paper analysis and fully-mechanized formal proof. We use Redex \cite{findler2010redex}, a domain-specific language for exploring language semantics, to provide feedback, thoroughly exercise candidates, and perform exploratory analysis.
+
+\setkeyword{define-language define-extended-language define-metafunction reduction-relation extend-reduction-relation define-metafunction/extension in-hole hole variable-not-otherwise-mentioned}
+\setkeyword{wcm ccm}
+
+\setspecialsymbol{lambda}{$\lambda$}
+\setspecialsymbol{->}{$\to$}
+\setspecialsymbol{-->}{$\rightarrow$}
+\setspecialsymbol{betav}{$\beta$v}
+\setconstant{error}
+\setkeyword{chi}
+
+\setspecialsymbol{lambdav}{$\lambda$v}
+\setspecialsymbol{lambdav-rr}{$\lambda$v-rr}
+\setspecialsymbol{lambdav-subst}{$\lambda$v-subst}
+
+\begin{schemedisplay}
+(define-language lambdav
+  (e (e e) x v error)
+  (x variable-not-otherwise-mentioned)
+  (v (lambda (x) e))
+  (E (E e) (v E) hole))
+\end{schemedisplay}
+
+\begin{schemedisplay}
+(define lambdav-rr
+  (reduction-relation lambdav
+   (--> (in-hole E ((lambda (x) e) v))
+        (in-hole E (lambdav-subst x v e))
+        "betav")
+   (--> (in-hole E x)
+        (in-hole E error)
+        "error: unbound identifier")
+   (--> (in-hole E (error e))
+        (in-hole E error)
+        "error in operator")
+   (--> (in-hole E (v error))
+        (in-hole E error)
+        "error in operand")))
+\end{schemedisplay}
+
+\begin{schemedisplay}
+(define-metafunction lambdav
+  lambdav-subst : x v e -> e
+  ;; 1. substitute in application
+  [(lambdav-subst x_1 v_1 (e_1 e_2))
+   ((lambdav-subst x_1 v_1 e_1) (lambdav-subst x_1 v_1 e_2))]
+  ;; 2a. substitute in variable (same)
+  [(lambdav-subst x_1 v_1 x_1)
+   v_1]
+  ;; 2b. substitute in variable (different)
+  [(lambdav-subst x_1 v_1 x_2)
+   x_2]
+  ;; 3a. substitute in abstraction (bound)
+  [(lambdav-subst x_1 v_1 (lambda (x_1) e_1))
+   (lambda (x_1) e_1)]
+  ;; 3b. substitute in abstraction (free)
+  [(lambdav-subst x_1 v_1 (lambda (x_2) e_1))
+   (lambda (x_2) (lambdav-subst x_1 v_1 e_1))]
+  ;; 4. substitute in error
+  [(lambdav-subst x_1 v_1 error)
+   error])
+\end{schemedisplay}
+
+\setspecialsymbol{lambdacm}{$\lambda$cm}
+\setspecialsymbol{lambdacm-rr}{$\lambda$cm-rr}
+\setspecialsymbol{lambdacm-subst}{$\lambda$cm-subst}
+
+Since \cm\ is a superset of \lv, we need only extend the definition of the \lv\ interpreter to accommodate the additions \cm\ brings.
+
+\begin{schemedisplay}
+(define-extended-language lambdacm lambdav
+  (e .... (wcm e e) (ccm))
+  (E (wcm v F) F)
+  (F (E e) (v E) (wcm E e) hole))
+\end{schemedisplay}
+
+Redex allows us to easily define a proper extension of a language, inheriting anything left unspecified. As similar as the \lv\ interpeter definition is to the \lv\ definition in figure \ref{lv-language-forms}, this \cm\ interpreter definition is to the \cm\ definition in figure \ref{cm-language-forms}.
+
+\begin{schemedisplay}
+(define lambdacm-rr
+  (extend-reduction-relation lambdav-rr lambdacm
+   (--> (in-hole E ((lambda (x) e) v))
+        (in-hole E (lambdacm-subst x v e))
+        "betav")
+   (--> (in-hole E (wcm v_1 (wcm v_2 e)))
+        (in-hole E (wcm v_2 e))
+        "wcm-collapse")
+   (--> (in-hole E (wcm v_1 v_2))
+        (in-hole E v_2)
+        "wcm")
+   (--> (in-hole E (ccm))
+        (in-hole E (chi E (lambda (x) (lambda (y) y))))
+        "chi")
+   (--> (in-hole E (wcm error e))
+        (in-hole E error)
+        "error in wcm mark expression")
+   (--> (in-hole E (wcm v error))
+        (in-hole E error)
+        "error in wcm body expression")))
+\end{schemedisplay}
+
+The first three rules in the reduction relation correspond with the three additional semantic rules found in \ref{cm-language-semantics}. The remaining handle cases introduced by the the new language forms' interaction with \scheme'error'.
+
+\begin{schemedisplay}
+(define-metafunction/extension lambdav-subst lambdacm
+  lambdacm-subst : x v e -> e
+  ;; 1. substitute in wcm form
+  [(lambdacm-subst x_1 v_1 (wcm e_1 e_2))
+   (wcm (lambdacm-subst x_1 v_1 e_1) (lambdacm-subst x_1 v_1 e_2))]
+  ;; 2. substitute in ccm form
+  [(lambdacm-subst x_1 v_1 (ccm))
+   (ccm)])
+\end{schemedisplay}
+
+The \scheme{lambdacm-subst} metafunction is extended to accommodate the additional forms in \cm.
+
+\begin{schemedisplay}
+(define-metafunction lambdacm
+  chi : E v -> v
+  [(chi hole v_ms)      v_ms]
+  [(chi (E e) v_ms)     (chi E v_ms)]
+  [(chi (v E) v_ms)     (chi E v_ms)]
+  [(chi (wcm E e) v_ms) (chi E v_ms)]
+  [(chi (wcm v E) v_ms) (chi E (lambda (p) ((p v) v_ms)))])
+\end{schemedisplay}
+
 \section{Proof}
 
-\section{Future Work}
+\section{Related Work}
 
 \section{Conclusion}
 
