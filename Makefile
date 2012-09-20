@@ -1,6 +1,6 @@
 pdf:
-	pdflatex paper.tex
+	pdf-slatex paper.tex
 	bibtex paper
-	pdflatex paper.tex
-	pdflatex paper.tex
+	pdf-slatex paper.tex
+	pdf-slatex paper.tex
 	
