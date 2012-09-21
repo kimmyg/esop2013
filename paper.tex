@@ -1,6 +1,7 @@
 \documentclass{llncs}
 
 \usepackage{amsmath}
+\usepackage{amssymb}
 \usepackage{slatex}
 
 \title{A Correct Compiler for Continuation Marks}
@@ -29,6 +30,7 @@
 \newcommand{\lvrrs}[0]{\rightarrow_v^{*}}
 \newcommand{\cmrr}[0]{\rightarrow_{cm}}
 \newcommand{\cmrrs}[0]{\rightarrow_{cm}^{*}}
+\newcommand{\C}[1]{\mathcal{C}[#1]}
 
 \begin{document}
 
@@ -40,7 +42,20 @@ Continuation marks, a programming language feature which generalizes stack inspe
 
 \section{Introduction}
 
-Language transformation is useful for a variety of purposes. It can be used to give meaning to the source language in terms of the target language [cite something], provide a characterization more amenable to analysis. Language transformation can also be used to \emph{desugar} a language into a simpler core. This 
+Continuation marks are good.
+Languages don't have them.
+This transformation should help.
+
+% uses of language transformation:
+% meaning of one language in terms of another (desugaring)
+% - reduce core code which simplifies implementations
+% easier to reason/optimize
+
+Language transformations are used for many reasons, but they all have one thing in common: the transformation must be meaningful: it must either preserve meaning or provide it.
+
+Language transformations either provide meaning or preserve meaning.
+
+Language transformation is useful for a variety of purposes. It can be used to define one language in terms of another, It can be used to give meaning to the source language in terms of the target language [cite something], provide a characterization more amenable to analysis or optimization. Language transformation can also be used to \emph{desugar} a language into a simpler core. This 
 Transforming has the following benefits:
 reduce core code (desugaring, simplifies implementations)
 give meaning to constructs (semantically, as well as, say, macros)
@@ -53,9 +68,14 @@ While continuation marks have had significant treatment, they do not currently e
 
 \section{Continuation Marks}
 
-Continuation marks generalize stack inspection, allowing a bevy of features that rely on some form of it to be defined at the language level. This includes algebraic steppers \cite{clements2001modeling}, security policies \cite{clements2004tail}, and aspects \cite{tucker2003pointcuts}.
+Continuation marks generalize stack inspection, allowing a bevy of features that rely on some form of it to be defined at the language level. This includes algebraic steppers \cite{clements2001modeling}, security policies \cite{clements2004tail}, and aspects \cite{tucker2003pointcuts}. By defining such tools at the language level, such tools are more robust, cheaper to port, more easily changed, etc.
 
-Few languages offer continuation marks. Their inception lay in Racket \cite{plt-tr1} and they have been added experimentally to \emph{JavaScript} \cite{clements2008implementing}, but their adoption by other languages has been nonexistent.
+Despite their profound utility, few languages offer continuation marks. Their inception lays in Racket \cite{plt-tr1} and they have been added experimentally to \emph{JavaScript} \cite{clements2008implementing}, but their earnest adoption by other languages has been nonexistent.
+
+% transformation means that they can be compiled away and any higher order language can have them
+% transformation also means that they do not need to be built into the language
+
+% talk about composability of this transform to others
 
 Racket offers desugaring facilities to the user via a powerful macro system. This requires and is limited to local transformations limited to expression boundaries.
 
@@ -63,28 +83,40 @@ A transformation-based compiler, such as a CPS compiler \cite{appel2007compiling
 
 \section{\cm}
 
-Terms $e$ in \cm\ are defined inductively by
-\begin{align}
-e=\, &\wcm{e}{e}\\
-     &\ccm\\
-     &\app{e}{e}\\
-     &v\\
-     &x
-\end{align}
+We define an extension of the call-by-value \lc\ with facilities for continuation marks. To begin, we briefly formalize the definition of the call-by-value \lc which we refer to as \lv.
+
+Terms $e$ in \lv\ are the familiar terms of the \lc, defined by
+\begin{equation}
+e=\app{e}{e}\,|\,v\,|\,x
+\end{equation}
 where 
 \begin{equation}
-v=\abs{x}{e}
+v=\abs{x}{e}\,|\,\mathbb{N}
 \end{equation}
-describes the values of the \lc.
+describes the values of the \lc\ extended with the natural numbers.
+
+The evaluation model of \lv\ requires a definition of evaluation contexts. We define evaluation contexts $E$ by
+\begin{equation}
+E=\app{E}{e}\,|\,\app{v}{E}\,|\,\hole
+\end{equation}
+where $\hole$ denotes a ``hole'' in the evaluation context, the ultimate destination of the evaluation of the expression that previously resided there.
+
+The semantics of \lv\ are defined simply by
+\begin{align}
+E[\app{\abs{x}{e}}{v}]  &\rr E[e[x\leftarrow v]]
+\end{align}
+where $e[x\leftarrow v]$ denotes a capture-avoiding substitution of every free occurrence of $x$ in $e$ with $v$.
+
+Because \cm\ is an extension of \lv, the definition of terms $e$ in \cm\ 
+\begin{equation}
+e=\wcm{e}{e}\,|\,\ccm\,|\,\app{e}{e}\,|\,v\,|\,x
+\end{equation}
+is identical to that of \lv\ with the addition of two forms for manipulating continuation marks: \scheme'wcm', short for \scheme'with-continuation-mark', which annotates the continuation with the evaluation of the given mark expression; and \scheme'ccm', short for \scheme'current-continuation-marks', which retrieves the current continuation marks.
 
 The sole novelty of \cm\ above the plain \lc\ is the ability to annotate and observe the continuation. Our evaluation model of \cm, introduced by Pettyjohn et al. \cite{pettyjohn2005continuations}, utilizes the current evaluation context for that purpose. The mutually inductive valuation contexts $E$, $F$ are defined by
 \begin{align}
-E=\, &\wcm{v}{F}\\
-     &F\\
-F=\, &\app{E}{e}\\
-     &\app{v}{E}\\
-     &\wcm{E}{e}\\
-     &\hole
+E=\, &\wcm{v}{F}\,|\,F\\
+F=\, &\app{E}{e}\,|\,\app{v}{E}\,|\,\wcm{E}{e}\,|\,\hole
 \end{align}
 where $\hole$ denotes a ``hole'' in the evaluation context, the ultimate destination of the evaluation of the expression that previously resided there.
 
@@ -93,18 +125,79 @@ The semantics of \cm\ are
 E[\app{\abs{x}{e}}{v}]  &\rr E[e[x\leftarrow v]]\\
 E[\wcm{v}{\wcm{v'}{e}}] &\rr E[\wcm{v'}{e}]\\
 E[\wcm{v}{v'}]          &\rr E[v']\\
-E[\ccm]                 &\rr E[\chi(E,\abs{x}{\abs{y}{y}})]
+E[\ccm]                 &\rr E[\chi(E)]
 \end{align}
-where the metafunction $\chi$ is defined by
+where $\chi$ is defined by
+\begin{equation}
+\chi(E)=\chi'(E,\mathbf{nil})
+\end{equation}
+and where $\chi'$ is defined in turn by
 \begin{align}
-\chi(\wcm{v}{F},vs) &= \chi(F,\abs{z}{\app{\app{z}{v}}{vs}})\\
-\chi(\app{E}{e},vs) &= \chi(E,vs)\\
-\chi(\app{v}{E},vs) &= \chi(E,vs)\\
-\chi(\wcm{E}{e},vs) &= \chi(E,vs)\\
-\chi(\hole,vs)      &= vs
-\end{align}.
+\chi'(\wcm{v}{F},vs) &= \chi'(F,\abs{z}{\app{\app{z}{v}}{vs}})\\
+\chi'(\app{E}{e},vs) &= \chi'(E,vs)\\
+\chi'(\app{v}{E},vs) &= \chi'(E,vs)\\
+\chi'(\wcm{E}{e},vs) &= \chi'(E,vs)\\
+\chi'(\hole,vs)      &= vs
+\end{align}
+Notice that $\chi'$ is defined in accumulator-passing style which has the effect of ordering the marks from most- to least-recently placed. The direct style formulation reverses this order. In the end, the ordering chosen is immaterial; we use this formulation to make the transform simpler.
+
+\subsection{\cm\ Example}
+
+\scheme|(wcm 4|
 
 \section{Transformation}
+
+A meaning-preserving transformation should commute with evaluation. By this, we mean that the following property should hold.
+
+\[
+\begin{array}{ccc}
+p & \cmrrs & v\\
+\downarrow_\mathcal{C} & & \downarrow_\mathcal{C}\\
+\C{p} & \lvrrs & \C{v}
+\end{array}
+\]
+
+This diagram captures the property that a meaning-preserving transformation should commute with evaluation. More succinctly, 
+\begin{equation}
+\label{meaning-preservation-property}
+p\cmrrs v\implies\C{p}\lvrrs\C{v}
+\end{equation}
+
+Our first approach was to use CPS because it treats all data and control flow uniformly [cite Sabry]. We passed an additional parameter (or two) in the spirit of double-barrelled continuations (but only in spirit). Our first attempt passed a pair as the second argument that needed to be deconstructed and constructed in every recursive definition. This was a lot of mindless manipulation that had little to do with the essence of the transform. In what took far too long a time, we realized the extent of this manipulation and finally confronted the subconscious aversion to passing \emph{two} arguments which we found was baseless.
+
+Almost immediately after, we realized that CPS was wholly unnecessary and landed back where we started with a direct-style definition.
+
+
+A comprehensive language transformation need only be defined over each syntactic form of the language. Thus, our full transformation definition will comprise transformation definitions for each of the five syntactic forms of \cm.
+
+As variables, abstractions, and applications exist in the target language, we imagine that their transformation will be relatively straightforward. The essence of \cm\ is that programs within can apply information to and observe information about the context in which they are evaluated. The work of the transform is then to propagate contextual information to each expression, manipulating it appropriately as the context changes.
+
+The treatment of \scheme'wcm' will require care as it is especially sensitive to evaluation order. Assuming termination for all constituent evaluations, consider
+\begin{align*}
+       &E[\wcm{e_0}{\wcm{e_1}{e_2}}]\\
+\cmrrs &E[\wcm{v_0}{\wcm{e_1}{e_2}}]\\
+\cmrrs &E[\wcm{v_0}{\wcm{v_1}{e_2}}]\\
+\cmrr  &E[\wcm{v_1}{e_2}]\\
+\cmrrs &E[\wcm{v_1}{v_2}]\\
+\cmrr  &E[v_2]
+\end{align*}
+We will need to arrange arguments in such a way that the natural call-by-value evaluation order of \lv\ accomplishes correct evaluation order according to the semantics of \cm.
+
+The treatment of \scheme'ccm' simply needs access to the evaluation of $\chi$ on the current context. As \lv\ lacks any facility to observe the context, the transformation needs to explicitly provide this information to each \scheme'ccm' expression. The $\chi$ metafunction is continuous in the sense that a small change in the prefix of the input effects only a small change in the prefix of the output, a consequence of its particular recursive definition. This fact means that it is possible to compute $\chi$ incrementally. The transform would then need to ensure that each expression had access to information about its own context.
+
+Finally, we consider the preservation of proper tail-call behavior. Even though tail calls exist in \lv--indeed, they are prevalent--we cannot rely on their behavior to honor proper tail-call behavior through the transform. Thus, we would need to maintain information about the immediate context of the program: specifically, whether evaluation is occurring directly within the body of a \scheme'wcm' expression or not.
+
+To accomplish each of these, the transform is defined in the spirit of CPS. Recall that in
+CPS, every function receives an additional formal parameter and every call site receives a
+corresponding argument. The definition of $\mathcal{C}$ takes this a step further under
+which every function receives \emph{two} additional formal parameters and every call site
+two additional arguments. As in CPS, the first parameter encapsulates the continuation or,
+for our purposes, the evaluation context. The second encapsulates all contextual
+information observable to the original \cm\ program.
+
+% talk about continuity of chi
+
+\subsection{Example: Factorial}
 
 \section{Testing}
 
@@ -128,7 +221,7 @@ A pragmatic approach to the discovery of a correct transformation involves consi
 (define-language lambdav
   (e (e e) x v error)
   (x variable-not-otherwise-mentioned)
-  (v (lambda (x) e))
+  (v (lambda (x) e) number)
   (E (E e) (v E) hole))
 \end{schemedisplay}
 
@@ -138,6 +231,9 @@ A pragmatic approach to the discovery of a correct transformation involves consi
    (--> (in-hole E ((lambda (x) e) v))
         (in-hole E (lambdav-subst x v e))
         "betav")
+   (--> (in-hole E (number_1 v))
+        (in-hole E error)
+        "error: number in operator position")
    (--> (in-hole E x)
         (in-hole E error)
         "error: unbound identifier")
@@ -167,7 +263,10 @@ A pragmatic approach to the discovery of a correct transformation involves consi
   ;; 3b. substitute in abstraction (free)
   [(lambdav-subst x_1 v_1 (lambda (x_2) e_1))
    (lambda (x_2) (lambdav-subst x_1 v_1 e_1))]
-  ;; 4. substitute in error
+  ;; 4. substitute in number
+  [(lambdav-subst x_1 v_1 number_1)
+   number_1]
+  ;; 5. substitute in error
   [(lambdav-subst x_1 v_1 error)
    error])
 \end{schemedisplay}
@@ -184,6 +283,8 @@ Since \cm\ is a superset of \lv, we need only extend the definition of the \lv\ 
   (E (wcm v F) F)
   (F (E e) (v E) (wcm E e) hole))
 \end{schemedisplay}
+
+This definition we must redefines evaluation contexts instead of merely extending them. This is to enforce the tail-call semantics [make sure those are mentioned earlier].
 
 Redex allows us to easily define a proper extension of a language, inheriting anything left unspecified. As similar as the \lv\ interpeter definition is to the \lv\ definition in figure \ref{lv-language-forms}, this \cm\ interpreter definition is to the \cm\ definition in figure \ref{cm-language-forms}.
 
@@ -235,11 +336,33 @@ The \scheme{lambdacm-subst} metafunction is extended to accommodate the addition
   [(chi (wcm v E) v_ms) (chi E (lambda (p) ((p v) v_ms)))])
 \end{schemedisplay}
 
+We can test that the property described by equation \ref{meaning-preservation-property} holds for a given program \scheme'p' with 
+\begin{schemedisplay}
+(define (meaning-preserved? p)
+  (alpha-eq? (transform (eval lambdacm p)) (eval lambdav (init (transform p)))))
+\end{schemedisplay}
+where \scheme'alpha-eq?' determines $\alpha$-equivalence between two \lc\ terms and \scheme'eval' is an alias for the Redex native \scheme'apply-reduction-relation*'.
+
+Redex provides convenient functions to initiate random testing.
+
+\begin{schemedisplay}
+(redex-check lambdacm e (meaning-preserved? e))
+\end{schemedisplay}
+
+\scheme'redex-check' generates random terms according to the grammar of the given language (\scheme'lambdacm') and category (\scheme'e') in search of counterexamples to the predicate. 
+
 \section{Proof}
+
+
+
 
 \section{Related Work}
 
+[Other people] have made a strong case for continuation marks.
+
 \section{Conclusion}
+
+We have provided and verified a correct transformation for continuation marks which, in effect, compiles them away.
 
 \bibliographystyle{plain}
 \bibliography{paper}
