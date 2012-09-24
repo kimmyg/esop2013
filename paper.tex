@@ -16,6 +16,9 @@
 % built in to the compiler if we don't want. In addition, it makes it
 % easier to do a type system.
 
+\setkeyword{wcm ccm with-continuation-mark current-continuation-marks}
+\setkeyword{print fac zero?}
+
 \newcommand{\cm}[0]{$\lambda_{cm}$}
 \newcommand{\lv}[0]{$\lambda_v$}
 \newcommand{\lc}[0]{$\lambda$-calculus}
@@ -44,13 +47,91 @@ We present direct and CPS-like transformations from the call-by-value $\lambda$-
 
 \section{Introduction}
 
-There are numerous programming language instruments which rely on stack inspection to function. For example, statistical profilers sample the stack regularly to record active functions, algebraic steppers observe the stack to represent the evaluation context of an expression, and debuggers naturally require consistent access to the stack. In essence, each of these examples rely on implementation-specific information and must be maintained accordingly as the instrumented language undergoes optimizations and ventures across platforms. This makes these tools brittle and increases the porting cost of the language ecosystem. Each of these examples would benefit from a generalized stack-inspection mechanism available within the instrumented language itself. If written in the enhanced instrumented language, this would increase their robustness and remove their porting cost entirely.
+There are numerous programming language instruments which rely on stack inspection to function. For example, statistical profilers sample the stack regularly to record active functions, algebraic steppers observe the stack to represent the evaluation context of an expression, and debuggers naturally require consistent access to the stack. In essence, each of these examples rely on implementation-specific information and must be maintained accordingly as the instrumented language undergoes optimizations and ventures across platforms. This makes these tools brittle and increases the porting cost of the language ecosystem. Each of these examples would benefit from a generalized stack-inspection mechanism available within the instrumented language itself. If written in such an enhanced language, each instrument would be more robust and port for free.
 
-Continuation marks \cite{clements2006portable} are a programming language feature which generalizes stack inpection. Not only do they dramatically simplify instrumentation \cite{clements2001modeling}, they have been used to allow inspection-based dynamic security checks in the presence of tail-call optimization \cite{clements2004tail} and to express aspect-oriented programming in higher-order languagues \cite{tucker2003pointcuts}.
+Continuation marks \cite{clements2006portable} are a programming language feature which generalizes stack inpection. Not only do they dramatically simplify correct instrumentation \cite{clements2001modeling}, they have been used to allow inspection-based dynamic security checks in the presence of tail-call optimization \cite{clements2004tail} and to express aspect-oriented programming in higher-order languagues \cite{tucker2003pointcuts}.
 
 Continuation marks originated in PLT Scheme (now Racket \cite{plt-tr1}) and have been added experimentally to \emph{JavaScript} \cite{clements2008implementing}. However, in spite of their usefulness, continuation marks have remained absent from programming languages at large. One reason for this may be that continuation marks do not yet enjoy a transformation to the \lc. With a correct transformation, higher-order language semanticists would not need to reconcile the feature with other features in the language (provided they had already done so with $\lambda$) and their compiler-writers would not need to worry about complicating their implementations (for the same reason).
 
+We present two transformations of continuation marks--one direct and one CPS-like--to the call-by-value \lc. We employ Redex, a domain-specific semantic meta-language, to provide feedback through randomized testing and reduction trace visualization.
 
+\section{Background}
+
+\subsection{Continuation Marks}
+
+Continuation marks allow the program to annotate and observe the stack (or continuation). This is accomplished via two surface-level syntactic forms in the language: \scheme'with-continuation-mark', abbreviated \scheme'wcm'; and \scheme'current-continuation-marks', abbreviated \scheme'ccm'.
+
+A \scheme'wcm' expression of the form \scheme|(wcm mark-expr body-expr)| annotates the youngest portion of the continuation with \scheme'mark-value', the evaluation of \scheme'mark-expr', before evaluating \scheme'body-expr' to \scheme'body-value'. The entire expression takes on \scheme'body-value'.
+
+Conceptually, a \scheme'ccm' expression of the form \scheme|(ccm)| traverses the continuation accumulating a list of annotations ascending in age.
+
+For example, the program \scheme|(wcm (+ 1 2) (ccm))| evaluates as
+\begin{schemedisplay}
+(wcm (+ 1 2) (ccm))
+(wcm 3 (ccm))
+(wcm 3 '(3))
+'(3)
+\end{schemedisplay}
+
+Continuation marks respect tail-call optimization.
+
+\begin{schemedisplay}
+(define (fac n)
+  (if (zero? n)
+      (begin
+        (print (ccm))
+        1)
+      (wcm n (* n (fac (- n 1))))))
+\end{schemedisplay}
+
+\begin{schemedisplay}
+(fac 2)
+(if (zero? 2) ... (wcm 2 (* 2 (fac (- 2 1)))))
+(wcm 2 (* 2 (fac (- 2 1))))
+(wcm 2 (* 2 (fac 1)))
+(wcm 2 (* 2 (if (zero? 1) ... (wcm 1 (* 1 (fac (- 1 1)))))))
+(wcm 2 (* 2 (wcm 1 (* 1 (fac (- 1 1))))))
+(wcm 2 (* 2 (wcm 1 (* 1 (fac 0)))))
+(wcm 2 (* 2 (wcm 1 (* 1 (if (zero? 0) (begin (print (ccm)) 1) ...)))))
+(wcm 2 (* 2 (wcm 1 (* 1 (begin (print (ccm)) 1)))))
+(wcm 2 (* 2 (wcm 1 (* 1 (begin (print '(1 2)) 1)))))
+'(1 2)
+(wcm 2 (* 2 (wcm 1 (* 1 (begin 1)))))
+(wcm 2 (* 2 (wcm 1 (* 1 1))))
+(wcm 2 (* 2 (wcm 1 1)))
+(wcm 2 (* 2 1))
+(wcm 2 2)
+2
+\end{schemedisplay}
+
+\begin{schemedisplay}
+(define (fac n acc)
+  (if (zero? n)
+      (begin
+        (print (ccm))
+        acc)
+      (wcm n (fac (- n 1) (* n acc)))))
+\end{schemedisplay}
+
+\begin{schemedisplay}
+(fac 2 1)
+(if (zero? 2) ... (wcm 2 (fac (- 2 1) (* 2 1))))
+(wcm 2 (fac (- 2 1) (* 2 1)))
+(wcm 2 (fac 1 (* 2 1)))
+(wcm 2 (fac 1 2))
+(wcm 2 (if (zero? 1) ... (wcm 1 (fac (- 1 1) (* 1 2)))))
+(wcm 2 (wcm 1 (fac (- 1 1) (* 1 2))))
+(wcm 1 (fac (- 1 1) (* 1 2)))
+(wcm 1 (fac 0 (* 1 2)))
+(wcm 1 (fac 0 2))
+(wcm 1 (if (zero? 0) (begin (print (ccm)) 2) ...))
+(wcm 1 (begin (print (ccm)) 2))
+(wcm 1 (begin (print '(1)) 2))
+'(1)
+(wcm 1 (begin 2))
+(wcm 1 2)
+2
+\end{schemedisplay}
 
 Language transformations must be meaningful: they must preserve meaning or provide it. Continuation marks have special meaning in the presence of tail-call optimization.
 % uses of language transformation:
