@@ -37,21 +37,28 @@
 \maketitle
 
 \begin{abstract}
-Continuation marks, a programming language feature which generalizes stack inspection, do not yet enjoy a transformation to the plain $\lambda$-calculus. We present a CPS-like transformation from the call-by-value $\lambda$-calculus augmented with continuation marks to the pure call-by-value $\lambda$-calculus. We discuss how such a transformation would simplify the construction of compilers which treat continuation marks correctly. We document an iterative, feedback-based approach using Redex. We accompany Finally, we verify the transformation with a meaning-preservation theorem.
+Continuation marks are a programming language feature which generalizes stack inspection. Despite its usefulness, this feature has not been adopted by languages which rely on stack inspection, e.g., for dynamic security checks. One reason for this neglect may be that continuation marks do not yet enjoy a transformation to the plain $\lambda$-calculus which would allow higher-order languages to provide continuation marks at little cost.
+
+We present direct and CPS-like transformations from the call-by-value $\lambda$-calculus augmented with continuation marks to the pure call-by-value $\lambda$-calculus. We discuss how such transformations would simplify the construction of compilers which treat continuation marks correctly. We document the aide of Redex, a domain-specific language for exploring language semantics, in the discovery of correct transformations. Finally, we verify the transformations with the proof of a meaning-preservation theorem.
 \end{abstract}
 
 \section{Introduction}
 
-Continuation marks are good.
-Languages don't have them.
-This transformation should help.
+There are numerous programming language instruments which rely on stack inspection to function. For example, statistical profilers sample the stack regularly to record active functions, algebraic steppers observe the stack to represent the evaluation context of an expression, and debuggers naturally require consistent access to the stack. In essence, each of these examples rely on implementation-specific information and must be maintained accordingly as the instrumented language undergoes optimizations and ventures across platforms. This makes these tools brittle and increases the porting cost of the language ecosystem. Each of these examples would benefit from a generalized stack-inspection mechanism available within the instrumented language itself. If written in the enhanced instrumented language, this would increase their robustness and remove their porting cost entirely.
 
+Continuation marks \cite{clements2006portable} are a programming language feature which generalizes stack inpection. Not only do they dramatically simplify instrumentation \cite{clements2001modeling}, they have been used to allow inspection-based dynamic security checks in the presence of tail-call optimization \cite{clements2004tail} and to express aspect-oriented programming in higher-order languagues \cite{tucker2003pointcuts}.
+
+Continuation marks originated in PLT Scheme (now Racket \cite{plt-tr1}) and have been added experimentally to \emph{JavaScript} \cite{clements2008implementing}. However, in spite of their usefulness, continuation marks have remained absent from programming languages at large. One reason for this may be that continuation marks do not yet enjoy a transformation to the \lc. With a correct transformation, higher-order language semanticists would not need to reconcile the feature with other features in the language (provided they had already done so with $\lambda$) and their compiler-writers would not need to worry about complicating their implementations (for the same reason).
+
+
+
+Language transformations must be meaningful: they must preserve meaning or provide it. Continuation marks have special meaning in the presence of tail-call optimization.
 % uses of language transformation:
 % meaning of one language in terms of another (desugaring)
 % - reduce core code which simplifies implementations
 % easier to reason/optimize
 
-Language transformations are used for many reasons, but they all have one thing in common: the transformation must be meaningful: it must either preserve meaning or provide it.
+Language transformations are used for many reasons, but they he transformation must be meaningful: it must either preserve meaning or provide it.
 
 Language transformations either provide meaning or preserve meaning.
 
@@ -91,9 +98,9 @@ e=\app{e}{e}\,|\,v\,|\,x
 \end{equation}
 where 
 \begin{equation}
-v=\abs{x}{e}\,|\,\mathbb{N}
+v=\abs{x}{e}
 \end{equation}
-describes the values of the \lc\ extended with the natural numbers.
+describes the values of the \lc.
 
 The evaluation model of \lv\ requires a definition of evaluation contexts. We define evaluation contexts $E$ by
 \begin{equation}
@@ -198,6 +205,34 @@ information observable to the original \cm\ program.
 % talk about continuity of chi
 
 \subsection{Example: Factorial}
+
+For convenience, we will augment the base language with direct forms for expressing factorial. Define terms $e$ in \lv\ by
+\begin{equation}
+e=\app{e}{e}\,|\,(*\,e\,e)\,|\,\app{\mathrm{pred}}{e}\,|\,\app{\mathrm{zero?}}{e}\,|\,v\,|\,x
+\end{equation}
+and values $v$ by
+\begin{equation}
+v=\abs{x}{e}\,|\,\mathbb{N}
+\end{equation}
+.
+
+We can express the factorial function by the following
+\begin{schemedisplay}
+(Y (lambda (f)
+     (lambda (n)
+       (((zero? n)
+         1)
+        (* n (f (pred n)))))))
+\end{schemedisplay}
+
+and with continuation marks by
+\begin{schemedisplay}
+(Y (lambda (f)
+     (lambda (n)
+       (((zero? n)
+         (print (ccm) 1))
+        (* n (wcm n (f (pred n))))))))
+\end{schemedisplay}
 
 \section{Testing}
 
