@@ -42,16 +42,28 @@
 \begin{abstract}
 Continuation marks are a programming language feature which generalizes stack inspection. Despite its usefulness, this feature has not been adopted by languages which rely on stack inspection, e.g., for dynamic security checks. One reason for this neglect may be that continuation marks do not yet enjoy a transformation to the plain $\lambda$-calculus which would allow higher-order languages to provide continuation marks at little cost.
 
-We present direct and CPS-like transformations from the call-by-value $\lambda$-calculus augmented with continuation marks to the pure call-by-value $\lambda$-calculus. We discuss how such transformations would simplify the construction of compilers which treat continuation marks correctly. We document the aide of Redex, a domain-specific language for exploring language semantics, in the discovery of correct transformations. Finally, we verify the transformations with the proof of a meaning-preservation theorem.
+We present direct and CPS-like transformations from the call-by-value $\lambda$-calculus augmented with continuation marks to the pure call-by-value $\lambda$-calculus. We discuss how such transformations simplify the construction of compilers which treat continuation marks correctly. We document the aide of Redex, a domain-specific language for exploring language semantics, in the discovery of correct transformations. Finally, we verify the transformations with the proof of a meaning-preservation theorem.
 \end{abstract}
 
 \section{Introduction}
+
+% motivate continuation marks
+% motivate continuation marks in more languages
+% discuss why they are not in more languages
+% discuss approaches to getting them in languages with pros/cons
+% ...culminating in our approach in terms of lambda
 
 There are numerous programming language instruments which rely on stack inspection to function. For example, statistical profilers sample the stack regularly to record active functions, algebraic steppers observe the stack to represent the evaluation context of an expression, and debuggers naturally require consistent access to the stack. Each of these examples relies on implementation-specific information and must be maintained as the instrumented language undergoes optimizations and ventures across platforms. This makes these tools brittle and increases the porting cost of the language ecosystem. Each of these examples would benefit from a generalized stack-inspection mechanism available within the instrumented language itself. If written in such an enhanced language, each instrument would be more robust and port for free.
 
 Continuation marks \cite{clements2006portable} are a programming language feature which generalizes stack inpection. Not only do they dramatically simplify correct instrumentation \cite{clements2001modeling}, they have been used to allow inspection-based dynamic security checks in the presence of tail-call optimization \cite{clements2004tail} and to express aspect-oriented programming in higher-order languagues \cite{tucker2003pointcuts}.
 
-Continuation marks originated in PLT Scheme (now Racket \cite{plt-tr1}) and have been added experimentally to \emph{JavaScript} \cite{clements2008implementing}. However, in spite of their usefulness, continuation marks have remained absent from programming languages at large. One reason for this may be that continuation marks do not yet enjoy a transformation to the \lc. With a correct transformation, higher-order language semanticists would not need to reconcile the feature with other features in the language (provided they had already done so with $\lambda$) and their compiler-writers would not need to worry about complicating their implementations (for the same reason).
+Continuation marks originated in PLT Scheme (now Racket \cite{plt-tr1}). However, in spite of their usefulness, continuation marks have remained absent from programming languages at large. One reason for this may be that retrofitting virtual machines to accommodate the level of stack inspection continuation marks must provide is expensive, especially when the virtual machine uses the host stack for efficiency.
+
+JavaScript, for example, enjoys ubiquity as the \emph{lingua franca} of the web and is an ideal candidate for continuation marks. One approach to adding continuation marks to JavaScript would be to alter numerous mature implemenations--indeed, Clements et al. accomplished this for Mozilla's Rhino compiler \cite{clements2008implementing}--and deploy them all. This leaves the devices that will never upgrade in the dust. The effort required to add continuation marks with this approach is immense. Nevertheless, it could benefit from such an infusion. Another approach would be to express continuation marks in terms of a subset of JavaScript--the smaller, the better. This macro-style approach would keep in the spirit of JavaScript as the \emph{lingua franca} of the web by desugaring our enhanced language into JavaScript.
+
+but we actually did it for the lambda calculus
+
+With such a transformation, higher-order language semanticists would not need to reconcile the feature with other features in the language (provided they had already done so with $\lambda$) and their compiler writers would not need to worry about complicating their implementations (for the same reason).
 
 We present two transformations of continuation marks--one direct and one CPS-like--to the call-by-value \lc. We employ Redex, a domain-specific semantic meta-language, to provide feedback through randomized testing and reduction trace visualization.
 
