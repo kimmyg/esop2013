@@ -47,7 +47,7 @@ We present direct and CPS-like transformations from the call-by-value $\lambda$-
 
 \section{Introduction}
 
-There are numerous programming language instruments which rely on stack inspection to function. For example, statistical profilers sample the stack regularly to record active functions, algebraic steppers observe the stack to represent the evaluation context of an expression, and debuggers naturally require consistent access to the stack. In essence, each of these examples rely on implementation-specific information and must be maintained accordingly as the instrumented language undergoes optimizations and ventures across platforms. This makes these tools brittle and increases the porting cost of the language ecosystem. Each of these examples would benefit from a generalized stack-inspection mechanism available within the instrumented language itself. If written in such an enhanced language, each instrument would be more robust and port for free.
+There are numerous programming language instruments which rely on stack inspection to function. For example, statistical profilers sample the stack regularly to record active functions, algebraic steppers observe the stack to represent the evaluation context of an expression, and debuggers naturally require consistent access to the stack. Each of these examples relies on implementation-specific information and must be maintained as the instrumented language undergoes optimizations and ventures across platforms. This makes these tools brittle and increases the porting cost of the language ecosystem. Each of these examples would benefit from a generalized stack-inspection mechanism available within the instrumented language itself. If written in such an enhanced language, each instrument would be more robust and port for free.
 
 Continuation marks \cite{clements2006portable} are a programming language feature which generalizes stack inpection. Not only do they dramatically simplify correct instrumentation \cite{clements2001modeling}, they have been used to allow inspection-based dynamic security checks in the presence of tail-call optimization \cite{clements2004tail} and to express aspect-oriented programming in higher-order languagues \cite{tucker2003pointcuts}.
 
@@ -61,20 +61,11 @@ We present two transformations of continuation marks--one direct and one CPS-lik
 
 Continuation marks allow the program to annotate and observe the stack (or continuation). This is accomplished via two surface-level syntactic forms in the language: \scheme'with-continuation-mark', abbreviated \scheme'wcm'; and \scheme'current-continuation-marks', abbreviated \scheme'ccm'.
 
-A \scheme'wcm' expression of the form \scheme|(wcm mark-expr body-expr)| annotates the youngest portion of the continuation with \scheme'mark-value', the evaluation of \scheme'mark-expr', before evaluating \scheme'body-expr' to \scheme'body-value'. The entire expression takes on \scheme'body-value'.
+A \scheme'wcm' expression of the form \scheme|(wcm mark-expr body-expr)| annotates the youngest portion of the continuation with \scheme'mark-value', the evaluation of \scheme'mark-expr', before evaluating \scheme'body-expr' to \scheme'body-value'. If an annotation, or \emph{mark}, already exists on the youngest portion, it is replaced by the new mark. The entire \scheme'wcm' expression takes on \scheme'body-value'.
 
-Conceptually, a \scheme'ccm' expression of the form \scheme|(ccm)| traverses the continuation accumulating a list of annotations ascending in age.
+A \scheme'ccm' expression of the form \scheme|(ccm)| traverses the continuation accumulating a list of annotations ascending in age.
 
-For example, the program \scheme|(wcm (+ 1 2) (ccm))| evaluates as
-\begin{schemedisplay}
-(wcm (+ 1 2) (ccm))
-(wcm 3 (ccm))
-(wcm 3 '(3))
-'(3)
-\end{schemedisplay}
-
-Continuation marks respect tail-call optimization.
-
+If the factorial function is defined by
 \begin{schemedisplay}
 (define (fac n)
   (if (zero? n)
@@ -83,7 +74,7 @@ Continuation marks respect tail-call optimization.
         1)
       (wcm n (* n (fac (- n 1))))))
 \end{schemedisplay}
-
+then the expression \scheme|(fac 2)| evaluates as
 \begin{schemedisplay}
 (fac 2)
 (if (zero? 2) ... (wcm 2 (* 2 (fac (- 2 1)))))
@@ -104,6 +95,7 @@ Continuation marks respect tail-call optimization.
 2
 \end{schemedisplay}
 
+Continuation marks respect tail-call optimization. Recall that in a language that is tail-call optimized, the continuation doesn't grow at the occurrence of a tail call as instead the previous execution context is subsumed by the new. Thus, with a tail-recursive definition of the factorial function as in
 \begin{schemedisplay}
 (define (fac n acc)
   (if (zero? n)
@@ -112,7 +104,7 @@ Continuation marks respect tail-call optimization.
         acc)
       (wcm n (fac (- n 1) (* n acc)))))
 \end{schemedisplay}
-
+evaluation of \scheme|(fac 2)| proceeds as
 \begin{schemedisplay}
 (fac 2 1)
 (if (zero? 2) ... (wcm 2 (fac (- 2 1) (* 2 1))))
@@ -132,6 +124,7 @@ Continuation marks respect tail-call optimization.
 (wcm 1 2)
 2
 \end{schemedisplay}
+and the tail-call behavior is clear.
 
 Language transformations must be meaningful: they must preserve meaning or provide it. Continuation marks have special meaning in the presence of tail-call optimization.
 % uses of language transformation:
@@ -285,6 +278,99 @@ information observable to the original \cm\ program.
 
 % talk about continuity of chi
 
+\newtheorem{defn}{Definition}
+
+\newenvironment{schemedefn}[1]{\begin{defn}$#1$}{\end{defn}}
+\newenvironment{namedschemedefn}[2]{\begin{defn}\label{#1}$#2$}{\end{defn}}
+
+\setspecialsymbol{TRUE}{$\mathbf{true}$}
+\setspecialsymbol{FALSE}{$\mathbf{false}$}
+\setspecialsymbol{PAIR}{$\mathbf{pair}$}
+\setspecialsymbol{FST}{$\mathbf{fst}$}
+\setspecialsymbol{SND}{$\mathbf{snd}$}
+\setspecialsymbol{NIL}{$\mathbf{nil}$}
+
+\newcommand{\true}{\mathbf{true}}
+\newcommand{\false}{\mathbf{false}}
+\newcommand{\nil}{\mathbf{nil}}
+\newcommand{\pair}[2]{((\mathbf{pair}\,#1)\,#2)}
+\newcommand{\eval}[1]{\overline{#1}}
+
+\begin{defn}
+$\true=\abs{x}{\abs{y}{x}}$
+\end{defn}
+
+\begin{defn}
+$\false=\abs{x}{\abs{y}{y}}$
+\end{defn}
+
+\begin{defn}
+$\mathbf{pair}=\abs{a}{\abs{b}{\abs{z}{\app{\app{z}{a}}{b}}}}$
+\end{defn}
+
+\begin{defn}
+$\mathbf{fst}=\abs{p}{\app{p}{\true}}$
+\end{defn}
+
+\begin{defn}
+$\mathbf{snd}=\abs{p}{\app{p}{\false}}$
+\end{defn}
+
+\begin{defn}
+$\nil=\false$
+\end{defn}
+
+\begin{schemedefn}{\C{\app{e_0}{e_1}}}
+\begin{schemedisplay}
+(lambda (k)
+   (lambda (f)
+     (lambda (m)
+       (((Ce_0
+          (lambda (a)
+            (((Ce_1
+               (lambda (b)
+                 ((((a b) k) f) m)))
+              FALSE)
+             m)))
+         FALSE)
+        m))))
+\end{schemedisplay}
+\end{schemedefn}
+
+\begin{schemedefn}{\C{\wcm{e_0}{e_1}}}
+\begin{schemedisplay}
+(lambda (k)
+  (lambda (f)
+    (lambda (m)
+      (((Ce_0
+         (lambda (n) ((lambda (k) 
+                        (k (((m (lambda (x) x)) (lambda (z) z)) (lambda (z) z))))
+                      (lambda (t) 
+                        ((lambda (k) (k ((f C[(SND t)]) t)))
+                         (lambda (r) 
+                           (((Ce_1 k) TRUE) C[(PAIR v r)])))))))
+        FALSE)
+       m))))
+\end{schemedisplay}
+\end{schemedefn}
+
+\begin{schemedefn}{\C{\ccm}}
+\begin{schemedisplay}
+(lambda (k)
+  (lambda (f)
+    (lambda (m)
+      (((m k) (lambda (z) z)) (lambda (z) z)))))
+\end{schemedisplay}
+\end{schemedefn}
+
+\begin{defn}
+$\C{v_0}=\C{\abs{x}{e'_0}}=\abs{k}{\abs{f}{\abs{m}{\app{k}{\abs{x}{\C{e'_0}}}}}}$
+\end{defn}
+
+\begin{defn}
+$\C{x}=\abs{k}{\abs{f}{\abs{m}{\app{k}{x}}}}$
+\end{defn}
+
 \subsection{Example: Factorial}
 
 For convenience, we will augment the base language with direct forms for expressing factorial. Define terms $e$ in \lv\ by
@@ -319,6 +405,8 @@ and with continuation marks by
 
 A pragmatic approach to the discovery of a correct transformation involves consistent feedback and testing to validate candidate transforms. Testing is no substitute for proof, but, as Klein et al. \cite{klein2012run} show, proof is no substitute for testing. Lightweight mechanization is a fruitful middle ground between pencil-and-paper analysis and fully-mechanized formal proof. We use Redex \cite{findler2010redex}, a domain-specific language for exploring language semantics, to provide feedback, thoroughly exercise candidates, and perform exploratory analysis.
 
+The correctness of the transform lies in the property that it commutes. In order to test for this property, we must construct evaluation models for the source language \cm\ and the target language \lv. Since \cm\ is an extension of \lv, many of its forms and semantics are inherited. Redex allows us to exploit this fact by defining a model for \lv\ first and then extending that model with the enhancements of \cm.
+
 \setkeyword{define-language define-extended-language define-metafunction reduction-relation extend-reduction-relation define-metafunction/extension in-hole hole variable-not-otherwise-mentioned}
 \setkeyword{wcm ccm}
 
@@ -327,11 +415,13 @@ A pragmatic approach to the discovery of a correct transformation involves consi
 \setspecialsymbol{-->}{$\rightarrow$}
 \setspecialsymbol{betav}{$\beta$v}
 \setconstant{error}
-\setkeyword{chi}
+\setkeyword{chi chi_p}
 
 \setspecialsymbol{lambdav}{$\lambda$v}
 \setspecialsymbol{lambdav-rr}{$\lambda$v-rr}
 \setspecialsymbol{lambdav-subst}{$\lambda$v-subst}
+
+We first define the form of terms $e$, values $v$, and evaluation contexts $E$.
 
 \begin{schemedisplay}
 (define-language lambdav
@@ -340,6 +430,8 @@ A pragmatic approach to the discovery of a correct transformation involves consi
   (v (lambda (x) e) number)
   (E (E e) (v E) hole))
 \end{schemedisplay}
+
+We then define the reduction relation for \lv. It consists of five rules. The first rule captures the sole semantic rule of \lv; the remaining handle error conditions.
 
 \begin{schemedisplay}
 (define lambdav-rr
@@ -360,6 +452,8 @@ A pragmatic approach to the discovery of a correct transformation involves consi
         (in-hole E error)
         "error in operand")))
 \end{schemedisplay}
+
+The reduction relation requires one metafunction to perform substitution. We omit any capture-avoidance facilities to keep the model simple and argue that it is unnecessary as we generate fresh variables in the transform.
 
 \begin{schemedisplay}
 (define-metafunction lambdav
@@ -387,11 +481,14 @@ A pragmatic approach to the discovery of a correct transformation involves consi
    error])
 \end{schemedisplay}
 
+
+
+
 \setspecialsymbol{lambdacm}{$\lambda$cm}
 \setspecialsymbol{lambdacm-rr}{$\lambda$cm-rr}
 \setspecialsymbol{lambdacm-subst}{$\lambda$cm-subst}
 
-Since \cm\ is a superset of \lv, we need only extend the definition of the \lv\ interpreter to accommodate the additions \cm\ brings.
+We now define the forms of terms $e$, and evaluation contexts $E$ and $F$, inheriting definitions from \lv\ where appropriate.
 
 \begin{schemedisplay}
 (define-extended-language lambdacm lambdav
@@ -400,9 +497,7 @@ Since \cm\ is a superset of \lv, we need only extend the definition of the \lv\ 
   (F (E e) (v E) (wcm E e) hole))
 \end{schemedisplay}
 
-This definition we must redefines evaluation contexts instead of merely extending them. This is to enforce the tail-call semantics [make sure those are mentioned earlier].
-
-Redex allows us to easily define a proper extension of a language, inheriting anything left unspecified. As similar as the \lv\ interpeter definition is to the \lv\ definition in figure \ref{lv-language-forms}, this \cm\ interpreter definition is to the \cm\ definition in figure \ref{cm-language-forms}.
+We extend the reduction relation of \lv. We begin by redefining application in terms of a substitution function aware of \cm. The following three definitions capture the remaining semantic rules of \cm. The remaining definitions handle error cases specific to \cm.
 
 \begin{schemedisplay}
 (define lambdacm-rr
@@ -417,7 +512,7 @@ Redex allows us to easily define a proper extension of a language, inheriting an
         (in-hole E v_2)
         "wcm")
    (--> (in-hole E (ccm))
-        (in-hole E (chi E (lambda (x) (lambda (y) y))))
+        (in-hole E (chi E))
         "chi")
    (--> (in-hole E (wcm error e))
         (in-hole E error)
@@ -427,7 +522,7 @@ Redex allows us to easily define a proper extension of a language, inheriting an
         "error in wcm body expression")))
 \end{schemedisplay}
 
-The first three rules in the reduction relation correspond with the three additional semantic rules found in \ref{cm-language-semantics}. The remaining handle cases introduced by the the new language forms' interaction with \scheme'error'.
+We extend the definition of substitution to accommodate the additional forms introduced by \cm.
 
 \begin{schemedisplay}
 (define-metafunction/extension lambdav-subst lambdacm
@@ -440,17 +535,23 @@ The first three rules in the reduction relation correspond with the three additi
    (ccm)])
 \end{schemedisplay}
 
-The \scheme{lambdacm-subst} metafunction is extended to accommodate the additional forms in \cm.
+The definition of \scheme'chi' and \scheme'chi_p' mirror their definitions exactly.
 
 \begin{schemedisplay}
 (define-metafunction lambdacm
-  chi : E v -> v
-  [(chi hole v_ms)      v_ms]
-  [(chi (E e) v_ms)     (chi E v_ms)]
-  [(chi (v E) v_ms)     (chi E v_ms)]
-  [(chi (wcm E e) v_ms) (chi E v_ms)]
-  [(chi (wcm v E) v_ms) (chi E (lambda (p) ((p v) v_ms)))])
+  chi : E -> v
+  [(chi E) (chi_p E (lambda (x) (lambda (y) y)))])
+
+(define-metafunction lambdacm
+  chi_p : E v -> v
+  [(chi_p hole v_ms)      v_ms]
+  [(chi_p (E e) v_ms)     (chi_p E v_ms)]
+  [(chi_p (v E) v_ms)     (chi_p E v_ms)]
+  [(chi_p (wcm E e) v_ms) (chi_p E v_ms)]
+  [(chi_p (wcm v E) v_ms) (chi_p E (lambda (p) ((p v) v_ms)))])
 \end{schemedisplay}
+
+We are now prepared to test various semantic properties of these two languages. Of course, we are interested in testing the commutativity of our transform. We observe that a mark-passing approach, much like a continuation-passing approach, abstracts terms and so requires a transformed term to be primed with an argument to initiate reduction. For this reason, we accompany each transform with an initialization function which primes a term appropriately for the corresponding transform.
 
 We can test that the property described by equation \ref{meaning-preservation-property} holds for a given program \scheme'p' with 
 \begin{schemedisplay}
