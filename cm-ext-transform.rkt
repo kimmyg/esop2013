@@ -26,10 +26,14 @@
          `(λ (,f) (λ (,m) (λ (,x0) ,(transform e0))))]
         [(list 'print e0 e1)
          `(λ (,f) (λ (,m) (print ((,(transform e0) ,FALSE) ,m) ((,(transform e1) ,f) ,m))))]
+        [(list 'print-list e0 e1)
+         `(λ (,f) (λ (,m) (print-list ((,(transform e0) ,FALSE) ,m) ((,(transform e1) ,f) ,m))))]
         [(list 'pred e0)
          `(λ (,f) (λ (,m) (pred ((,(transform e0) ,FALSE) ,m))))]
-        [(list 'zero? e0)
-         `(λ (,f) (λ (,m) (zero? ((,(transform e0) ,FALSE) ,m))))]
+        [(list 'zero? e0 e1 e2)
+         `(λ (,f) (λ (,m) (zero? ((,(transform e0) ,FALSE) ,m)
+                                 ((,(transform e1) ,f) ,m)
+                                 ((,(transform e2) ,f) ,m))))]
         [(list '* e0 e1)
          `(λ (,f) (λ (,m) (* ((,(transform e0) ,FALSE) ,m) ((,(transform e1) ,FALSE) ,m))))]
         [(list e0 e1)
