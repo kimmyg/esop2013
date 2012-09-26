@@ -4,7 +4,7 @@
 \usepackage{amssymb}
 \usepackage{slatex}
 
-\title{A Correct Compiler for Continuation Marks}
+\title{Instant Continuation Marks--Just Add $\lambda$}
 
 \author{Kimball Germane \and Jay McCarthy}
 \institute{Brigham Young University}
@@ -228,7 +228,7 @@ Notice that $\chi'$ is defined in accumulator-passing style which has the effect
 
 \section{Transformation}
 
-A meaning-preserving transformation should commute with evaluation. By this, we mean that the following property should hold.
+A meaning-preserving transformation should commute with evaluation. By this, we mean that the following property should hold for programs $p\in\lambda_{cm}$.
 
 \[
 \begin{array}{ccc}
@@ -238,7 +238,7 @@ p & \cmrrs & v\\
 \end{array}
 \]
 
-This diagram captures the property that a meaning-preserving transformation should commute with evaluation. More succinctly, 
+This diagram captures the property that a meaning-preserving transformation commutes with evaluation. More succinctly, 
 \begin{equation}
 \label{meaning-preservation-property}
 p\cmrrs v\implies\C{p}\lvrrs\C{v}
@@ -275,8 +275,6 @@ which every function receives \emph{two} additional formal parameters and every 
 two additional arguments. As in CPS, the first parameter encapsulates the continuation or,
 for our purposes, the evaluation context. The second encapsulates all contextual
 information observable to the original \cm\ program.
-
-% talk about continuity of chi
 
 \newtheorem{defn}{Definition}
 
@@ -570,14 +568,37 @@ Redex provides convenient functions to initiate random testing.
 
 \section{Proof}
 
+\section{Continuation Marks in JavaScript}
+
+% add stuff to language to express factorial
+% define transformation of new constructs
+% transform factorial function
+% transliterate it to JS
+% see continuation marks in JS
+
+% we can add continuation marks to the compiler, but we can't deploy a virtual machine wherever we want. We need to leverage the existing, entrenched virtual machines. One approach would be to 
+
+Given that we can express continuation marks in the \lc, we can see that the only thing necessary for continuation marks is first-class functions. JavaScript is a ubiquitous higher-order language that lacks continuation marks. Clements et al. experimentally added continuation marks to JavaScript by directly modifying Mozilla's Rhino implementation \cite{clements2008implementing}. This is a natural fit as the implementation is designed to optimize tail calls providing a venue in which the full semantics of continuation marks can be observed.
+
+Many implementations do not optimize tail calls. We could modify these implementations to first optimize tail calls and then support continuation marks, but this does nothing to the existing, entrenched virtual machines in use today. For this reason, we define a superset of JavaScript with continuation marks and a transformation to base JavaScript. The transformation utilizes the tail-position flag and mark-passing style of the \lc\ transform.
+
+functions receive two additional arguments
+if a call is in tail position, pass that flag.
+I don't know.
 
 
 
-\section{Related Work}
-
-[Other people] have made a strong case for continuation marks.
+We transliterate
 
 \section{Conclusion}
+
+Continuation marks support a bevy of instrumentation tools and advanced language features in a generalized, portable way. Despite their demonstrated utility, they have not yet found their way into most languages. A verified characterization of continuation marks in a pure computational language provides implementors of higher-order languages a correct compiler for continuation marks.
+
+Stack inspection is a common approach for instrumentation and dynamic 
+
+Instrumentation tools abound, and stack inspection is a common method to in
+
+Stack inspection is a common approach to natural method to obtain dynamic information, but typical implementation
 
 We have provided and verified a correct transformation for continuation marks which, in effect, compiles them away.
 
