@@ -57,15 +57,13 @@ There are numerous programming language instruments which rely on stack inspecti
 
 Continuation marks \cite{clements2006portable} are a programming language feature which generalizes stack inpection. Not only do they dramatically simplify correct instrumentation \cite{clements2001modeling}, they have been used to allow inspection-based dynamic security checks in the presence of tail-call optimization \cite{clements2004tail} and to express aspect-oriented programming in higher-order languagues \cite{tucker2003pointcuts}.
 
-Continuation marks originated in PLT Scheme (now Racket \cite{plt-tr1}). However, in spite of their usefulness, continuation marks have remained absent from programming languages at large. One reason for this may be that retrofitting virtual machines to accommodate the level of stack inspection continuation marks must provide is expensive, especially when the virtual machine uses the host stack for efficiency.
+Continuation marks originated in PLT Scheme (now Racket \cite{plt-tr1}). However, in spite of their usefulness, continuation marks have remained absent from programming languages at large. One reason for this is that retrofitting virtual machines to accommodate the level of stack inspection continuation marks must provide is expensive, especially when the virtual machines use the host stack for efficiency.
 
-JavaScript, for example, enjoys ubiquity as the \emph{lingua franca} of the web and is an ideal candidate for continuation marks. One approach to adding continuation marks to JavaScript would be to alter numerous mature implemenations--indeed, Clements et al. accomplished this for Mozilla's Rhino compiler \cite{clements2008implementing}--and deploy them all. This leaves the devices that will never upgrade in the dust. The effort required to add continuation marks with this approach is immense. Nevertheless, it could benefit from such an infusion. Another approach would be to express continuation marks in terms of a subset of JavaScript--the smaller, the better. This macro-style approach would keep in the spirit of JavaScript as the \emph{lingua franca} of the web by desugaring our enhanced language into JavaScript.
+For example, the ubiquitous JavaScript is an ideal candidate for the addition of continuation marks. However, as the \emph{lingua franca} of the web, it has numerous mature implementations which have been heavily optimized. To add continuation marks to JavaScript amounts to modifying each implementation upstream, to say nothing of amending the JavaScript standard. (Clements et al. successfully added continuation marks in Mozilla's Rhino compiler \cite{clements2008implementing}, but it remains a proof-of-concept.)
 
-but we actually did it for the lambda calculus
+To avoid this roadblock, we instead take a macro-style approach; that is, we enhance the core language with facilities to manipulate continuation marks and desugar the enhanced language back to the core. To make our desugaring transformation portable to other languages, we define it over the \lc, the common core of most higher-order languages. With such a transformation, language semanticists do not need to reconcile the feature with other features in the language (provided they have already done so with $\lambda$) and their compiler writers do not need to worry about complicating their implementations (for the same reason).
 
-With such a transformation, higher-order language semanticists would not need to reconcile the feature with other features in the language (provided they had already done so with $\lambda$) and their compiler writers would not need to worry about complicating their implementations (for the same reason).
-
-We present two transformations of continuation marks--one direct and one CPS-like--to the call-by-value \lc. We employ Redex, a domain-specific semantic meta-language, to provide feedback through randomized testing and reduction trace visualization.
+We begin this paper exposing continuation marks further. We then present a core and enhanced language along with Redex models for each. We discuss the necessary properties for a meaningful transform.  We present two transformations of continuation marks--one direct and one CPS-like--to the call-by-value \lc. We then prove a meaning-preservation theorem.
 
 \section{Background}
 
@@ -579,28 +577,6 @@ Redex provides convenient functions to initiate random testing.
 \scheme'redex-check' generates random terms according to the grammar of the given language (\scheme'lambdacm') and category (\scheme'e') in search of counterexamples to the predicate. 
 
 \section{Proof}
-
-\section{Continuation Marks in JavaScript}
-
-% add stuff to language to express factorial
-% define transformation of new constructs
-% transform factorial function
-% transliterate it to JS
-% see continuation marks in JS
-
-% we can add continuation marks to the compiler, but we can't deploy a virtual machine wherever we want. We need to leverage the existing, entrenched virtual machines. One approach would be to 
-
-Given that we can express continuation marks in the \lc, we can see that the only thing necessary for continuation marks is first-class functions. JavaScript is a ubiquitous higher-order language that lacks continuation marks. Clements et al. experimentally added continuation marks to JavaScript by directly modifying Mozilla's Rhino implementation \cite{clements2008implementing}. This is a natural fit as the implementation is designed to optimize tail calls providing a venue in which the full semantics of continuation marks can be observed.
-
-Many implementations do not optimize tail calls. We could modify these implementations to first optimize tail calls and then support continuation marks, but this does nothing to the existing, entrenched virtual machines in use today. For this reason, we define a superset of JavaScript with continuation marks and a transformation to base JavaScript. The transformation utilizes the tail-position flag and mark-passing style of the \lc\ transform.
-
-functions receive two additional arguments
-if a call is in tail position, pass that flag.
-I don't know.
-
-
-
-We transliterate
 
 \section{Conclusion}
 
