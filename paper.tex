@@ -60,7 +60,7 @@ Continuation marks \cite{clements2006portable} are a programming language featur
 
 Continuation marks originated in PLT Scheme (now Racket \cite{plt-tr1}). However, in spite of their usefulness, continuation marks have remained absent from programming languages at large. One reason for this is that retrofitting virtual machines to accommodate the level of stack inspection continuation marks must provide is expensive, especially when the virtual machines use the host stack for efficiency.
 
-For example, the ubiquitous JavaScript is an ideal candidate for the addition of continuation marks. However, as the \emph{lingua franca} of the web, it has numerous mature implementations which have been heavily optimized. To add continuation marks to JavaScript amounts to modifying each implementation upstream, to say nothing of amending the JavaScript standard. (Clements et al. successfully added continuation marks in Mozilla's Rhino compiler \cite{clements2008implementing}, but it remains a proof-of-concept.)
+For example, the ubiquitous JavaScript is an ideal candidate for the addition of continuation marks. However, as the lingua franca of the web, it has numerous mature implementations which have been heavily optimized. To add continuation marks to JavaScript amounts to modifying each implementation upstream, to say nothing of amending the JavaScript standard. (Clements et al. successfully added continuation marks in Mozilla's Rhino compiler \cite{clements2008implementing}, but it remains a proof-of-concept.)
 
 To avoid this roadblock, we instead take a macro-style approach; that is, we enhance the core language with facilities to manipulate continuation marks and desugar the enhanced language back to the core. To make our desugaring transformation portable to other languages, we define it over the \lc, the common core of most higher-order languages. With such a transformation, language semanticists do not need to reconcile the feature with other features in the language (provided they have already done so with $\lambda$) and their compiler writers do not need to worry about complicating their implementations (for the same reason).
 
@@ -104,7 +104,7 @@ then the expression \scheme|(fac 2)| evaluates as
 2
 \end{schemedisplay}
 
-Continuation marks respect tail-call optimization (TCO). A tail call in a language with TCO does not enlarge the continuation. Instead, the previous portion of the execution context is subsumed by the new. Conceptually, the continuation does not grow to accommodate new marks; if one is made, the previous is overwritten. Thus, with a tail-recursive definition of the factorial function as in
+Continuation marks respect tail-call optimization. A tail call in a tail-call optimized language does not enlarge the continuation. Instead, the previous portion of the execution context is subsumed by the new. Conceptually, the continuation does not grow to accommodate new marks; if one is made, the previous is overwritten. Thus, with a tail-recursive definition of the factorial function as in
 \begin{schemedisplay}
 (define (fac n acc)
   (if (zero? n)
@@ -286,7 +286,7 @@ The treatment of \scheme'ccm' simply needs access to the evaluation of $\chi$ on
 
 Finally, we address the preservation of proper tail-call behavior. Even though tail calls exist in \lv--indeed, they are prevalent--their behavior does not honor proper tail-call behavior through the transform. Thus, we maintain information about the immediate context of the program: specifically, whether evaluation is occurring directly within the body of a \scheme'wcm' expression.
 
-All together, the transformation adds three arguments to every term $e$: the continuation $k$ representative of the current context $E$; a flag $f$ encoding whether evaluation is occurring with the body of a \scheme'wcm' expression; and the transformed value of $\chi$ for the current context $\C{\chi(E)}$.
+All together, the transformation adds three arguments to every term $e$: the continuation $k$ representative of the current context $E$; a flag $f$ encoding whether evaluation is occurring with the body of a \scheme'wcm' expression; and the transformed value $m$ of $\chi$ for the current context $\C{\chi(E)}$.
 
 The formal definition of $\mathcal{C}$ follows.
 
@@ -402,10 +402,10 @@ The evaluation of operator and operand in an application enlarges the continuati
 \end{schemedisplay}
 \end{schemedefn}
 
-The definition over \scheme'wcm' expressions is the only one to make explicit use of the value of the flag. Following the evaluation of the mark expression, rule \ref{collapse} is applied, if necessary. The continuity of $\chi$ allows us to construct $\chi(E'[\wcm{v_0}{e_1}])$ from $\chi(E)$ where 
+The definition over \scheme'wcm' expressions is the only one to make explicit use of the value of the flag. Following the evaluation of the mark expression, rule \ref{tail-enforce} is applied, if necessary. The continuity of $\chi$ allows us to construct $\chi(E''[\wcm{v_0}{e_1}])$ from $\chi(E)$ where 
 
 \begin{equation}
-E'=\begin{cases}
+E''=\begin{cases}
 E' &\text{if $E=E'[\wcm{v'}{\hole}]$ for some $E'$ and $v'$}\\
 E &\text{otherwise}
 \end{cases}
@@ -474,7 +474,7 @@ The correctness of the transform lies in the property that it commutes. In order
 \setspecialsymbol{-->}{$\rightarrow$}
 \setspecialsymbol{betav}{$\beta$v}
 \setconstant{error}
-\setkeyword{chi chi_p}
+\setkeyword{chi chi_p number apply-reduction-relation*}
 
 \setspecialsymbol{lambdav}{$\lambda$v}
 \setspecialsymbol{lambdav-rr}{$\lambda$v-rr}
@@ -612,6 +612,8 @@ The definition of \scheme'chi' and \scheme'chi_p' mirror their definitions exact
 
 We are now prepared to test various semantic properties of these two languages. Of course, we are interested in testing the commutativity of our transform. We observe that a mark-passing approach, much like a continuation-passing approach, abstracts terms and so requires a transformed term to be primed with an argument to initiate reduction. For this reason, we accompany each transform with an initialization function which primes a term appropriately for the corresponding transform.
 
+\setkeyword{meaning-preserved? alpha-eq? transform eval init redex-check}
+
 We can test that the property described by equation \ref{meaning-preservation-property} holds for a given program \scheme'p' with 
 \begin{schemedisplay}
 (define (meaning-preserved? p)
@@ -628,6 +630,68 @@ Redex provides convenient functions to initiate random testing.
 \scheme'redex-check' generates random terms according to the grammar of the given language (\scheme'lambdacm') and category (\scheme'e') in search of counterexamples to the predicate. 
 
 \section{Proof}
+
+\begin{definition}
+\[
+\mathrm{eval}_{cm}(p)=\begin{cases}
+v     &\text{if $p\cmrrs v$}\\
+\perp &\text{if $p\cmrrs\cdots$}
+\end{cases}
+\]
+\end{definition}
+
+\begin{definition}
+\[
+\mathrm{eval}_{v}(p)=\begin{cases}
+v     &\text{if $p\lvrrs v$}\\
+\perp &\text{if $p\lvrrs\cdots$}
+\end{cases}
+\]
+\end{definition}
+
+\newtheorem{maintheorem}{Correctness of $\mathcal{C}$}
+\begin{maintheorem}
+For all programs $p\in\lambda_{cm}$, $\C{\mathrm{eval}_{cm}(p)}=\mathrm{eval}_{v}(\C{p})$.
+\end{maintheorem}
+
+\section{Back to JavaScript}
+
+With a correct transformation of continuation marks defined over the \lc, it requires little to add continuation marks to an eager, higher-order language such as JavaScript.
+
+We add two keywords to manipulate continuation marks: the familiar \texttt{wcm} and \texttt{ccm}. We chose block syntax for \texttt{wcm} to convey that it is a special form, like a conditional, instead of a function-like interface. A lone \texttt{ccm} evaluates to the current continuation marks.
+
+Factorial in this JavaScript extension can be implemented like the following:
+\begin{verbatim}
+var fac = function( n ) {
+    if( n == 0 ) {
+        console.log( ccm );
+        return 1;
+    }
+    else {
+        return wcm { n }
+                   { n * fac( n - 1 ) };
+    }
+}
+\end{verbatim}
+
+A transformation of this function desugars these constructs into valid JavaScript.
+\begin{verbatim}
+var fac = function( f, m ) {
+    return function( n ) {
+        if( n == 0 ) {
+            console.log( (function( f, m ) { return m; })( false, m ) );
+            return 1;
+        }
+        else {
+            return (function( f, m ) {
+                return (function( v ) {
+                    return n * fac( false, [ v ].concat( f ? m.slice( 1 ) : m ) )( n - 1 );
+                })( n );
+            })( f, m );
+        }
+    }
+}
+\end{verbatim} 
 
 \section{Conclusion}
 
