@@ -26,7 +26,7 @@
                                      (λ (z) 1))
                                     (λ (z) (* n (f (pred n))))) 0))) (λ (x) x)) 0))))
 
-(lv->js (init (transform '(((λ (f)
+#;(lv->js (init (transform '(((λ (f)
                               ((λ (x) (f (λ (v) ((x x) v))))
                                (λ (x) (f (λ (v) ((x x) v))))))
                             (λ (f)
@@ -34,3 +34,4 @@
                                 ((zero? n
                                         (λ (z) (print-list (ccm) 1))
                                         (λ (z) (wcm n (* n (f (pred n)))))) 0)))) 5))))
+
