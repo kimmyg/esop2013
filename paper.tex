@@ -54,7 +54,7 @@ We present direct and CPS-like transformations from the call-by-value $\lambda$-
 % discuss approaches to getting them in languages with pros/cons
 % ...culminating in our approach in terms of lambda
 
-Numerous programming language instruments rely on stack inspection to function. Statistical profilers sample the stack regularly to record active functions, algebraic steppers observe the stack to represent the evaluation context of an expression, and debuggers naturally require consistent access to the stack. Each of these relies on implementation-specific information and must be maintained as the instrumented language undergoes optimizations and ventures across platforms. This makes these tools brittle and increases the porting cost of the language ecosystem. Each of these examples would benefit from a generalized stack-inspection mechanism available within the instrumented language itself. If written in such an enhanced language, each instrument would be more robust, more easily modified, and would port for free.
+Numerous programming language instruments rely on stack inspection to function. Statistical profilers sample the stack regularly to record active functions, algebraic steppers observe the stack to represent the evaluation context of an expression, and debuggers naturally require consistent access to the stack. Each scenario relies on implementation-specific information and must be maintained as the instrumented language undergoes optimizations and ventures across platforms. This makes these tools brittle and increases the porting cost of the language ecosystem. Each scenario would benefit from a generalized stack-inspection mechanism available within the instrumented language itself. If written in such an enhanced language, each instrument would be more robust, more easily modified, and would port for free.
 
 Continuation marks \cite{clements2006portable} are a programming language feature which generalizes stack inpection. Not only do they dramatically simplify correct instrumentation \cite{clements2001modeling}, they have been used to allow inspection-based dynamic security checks in the presence of tail-call optimization \cite{clements2004tail} and to express aspect-oriented programming in higher-order languagues \cite{tucker2003pointcuts}.
 
@@ -64,17 +64,19 @@ For example, the ubiquitous JavaScript is an ideal candidate for the addition of
 
 To avoid this roadblock, we instead take a macro-style approach; that is, we enhance the core language with facilities to manipulate continuation marks and desugar the enhanced language back to the core. To make our desugaring transformation portable to other languages, we define it over the \lc, the common core of most higher-order languages. With such a transformation, language semanticists do not need to reconcile the feature with other features in the language (provided they have already done so with $\lambda$) and their compiler writers do not need to worry about complicating their implementations (for the same reason).
 
-We begin this paper exposing continuation marks further. We then present a core and enhanced language along with Redex models for each. We discuss the necessary properties for a meaningful transform.  We present two transformations of continuation marks--one direct and one CPS-like--to the call-by-value \lc. We then prove a meaning-preservation theorem.
+We begin by explaining continuation marks further. We then present a core and enhanced language along with Redex models for each. We discuss the necessary properties for a meaningful transform.  We present two transformations of continuation marks--one direct and one CPS-like--to the call-by-value \lc. We then prove a meaning-preservation theorem.
 
 \section{Continuation Marks}
 
 Continuation marks allow the program to annotate and observe the stack (or continuation). This is accomplished via two surface-level syntactic forms in the language: \scheme'with-continuation-mark', abbreviated \scheme'wcm'; and \scheme'current-continuation-marks', abbreviated \scheme'ccm'.
 
-A \scheme'wcm' expression of the form \scheme|(wcm mark-expr body-expr)| annotates the youngest portion of the continuation with \scheme'mark-value', the evaluation of \scheme'mark-expr', before evaluating \scheme'body-expr' to \scheme'body-value'. If an annotation, or \emph{mark}, already exists on the youngest portion, it is replaced by the new mark. The entire \scheme'wcm' expression takes on \scheme'body-value'.
+A \scheme'wcm' expression of the form \scheme|(wcm mark-expr body-expr)| annotates the youngest portion of the continuation with \scheme'mark-value', the evaluation of \scheme'mark-expr', before evaluating \scheme'body-expr' to \scheme'body-value'. If an annotation, or \emph{mark}, already exists on the youngest portion, it is replaced by the new mark. This newly-added mark is available within \scheme'body-expr' via \scheme'ccm' during its evaluation. Once complete, the entire \scheme'wcm' expression takes on \scheme'body-value'.
 
 A \scheme'ccm' expression of the form \scheme|(ccm)| traverses the continuation accumulating a list of annotations ascending in age.
 
-If the factorial function is defined by
+\subsection{Example}
+
+The traditional, properly-recursive factorial function can be expressed with continuation marks as follows:
 \begin{schemedisplay}
 (define (fac n)
   (if (zero? n)
@@ -83,7 +85,9 @@ If the factorial function is defined by
         1)
       (wcm n (* n (fac (- n 1))))))
 \end{schemedisplay}
-then the expression \scheme|(fac 2)| evaluates as
+In this definition, a multiplication pends following the recursive call, so the continuation grows with each.
+
+The evaluation of the factorial of 2, expressed by \scheme|(fac 2)|, proceeds as
 \begin{schemedisplay}
 (fac 2)
 (if (zero? 2) ... (wcm 2 (* 2 (fac (- 2 1)))))
@@ -94,8 +98,10 @@ then the expression \scheme|(fac 2)| evaluates as
 (wcm 2 (* 2 (wcm 1 (* 1 (fac 0)))))
 (wcm 2 (* 2 (wcm 1 (* 1 (if (zero? 0) (begin (print (ccm)) 1) ...)))))
 (wcm 2 (* 2 (wcm 1 (* 1 (begin (print (ccm)) 1)))))
+\end{schemedisplay}
+At this point, the term \scheme|(ccm)| is evaluated. This happens, in effect, by walking the continuation and building a list of the current continuation marks which appear in the \scheme'mark-value' position of a \scheme'wcm' term. In this example, \scheme|(ccm)| evaluates to \scheme|'(1 2)|. Evaluation continues as
+\begin{schemedisplay}
 (wcm 2 (* 2 (wcm 1 (* 1 (begin (print '(1 2)) 1)))))
-'(1 2)
 (wcm 2 (* 2 (wcm 1 (* 1 (begin 1)))))
 (wcm 2 (* 2 (wcm 1 (* 1 1))))
 (wcm 2 (* 2 (wcm 1 1)))
@@ -103,8 +109,16 @@ then the expression \scheme|(fac 2)| evaluates as
 (wcm 2 2)
 2
 \end{schemedisplay}
+The visible effect of the call is
+\begin{verbatim}
+> (fac 2)
+(1 2)
+2
+\end{verbatim}
 
-Continuation marks respect tail-call optimization. A tail call in a tail-call optimized language does not enlarge the continuation. Instead, the previous portion of the execution context is subsumed by the new. Conceptually, the continuation does not grow to accommodate new marks; if one is made, the previous is overwritten. Thus, with a tail-recursive definition of the factorial function as in
+In a tail-call optimized language, a call made in tail position does not enlarge the continuation. Instead, the portion of the evaluation context dedicated to the calling function is repurposed for the called function. Continuation marks are also subject to this optimization; if the continuation is marked in tail position, the previous mark there is replaced, if it exists.
+
+This behavior is apparent in the tail-recursive definition of the factorial function, which follows.
 \begin{schemedisplay}
 (define (fac n acc)
   (if (zero? n)
@@ -113,7 +127,9 @@ Continuation marks respect tail-call optimization. A tail call in a tail-call op
         acc)
       (wcm n (fac (- n 1) (* n acc)))))
 \end{schemedisplay}
-evaluation of \scheme|(fac 2)| proceeds as
+In this definition, the multiplication is performed before the recursive call and an accumulated value is passed. With no pending computation, the evaluation context devoted to this function is no longer necessary, and is subsumed by the continuation mark directive.
+
+The evaluation of the factorial of 2, here expressed by \scheme|(fac 2 1)| proceeds as
 \begin{schemedisplay}
 (fac 2 1)
 (if (zero? 2) ... (wcm 2 (fac (- 2 1) (* 2 1))))
@@ -122,20 +138,26 @@ evaluation of \scheme|(fac 2)| proceeds as
 (wcm 2 (fac 1 2))
 (wcm 2 (if (zero? 1) ... (wcm 1 (fac (- 1 1) (* 1 2)))))
 (wcm 2 (wcm 1 (fac (- 1 1) (* 1 2))))
+\end{schemedisplay}
+At this point, there is one \scheme'wcm' directive directly nested within another. Behaviorally, the outer one is collapsed \emph{before} evaluation of the inner body proceeds. In effect, it is overwritten. Following this, evaluation continues as
+\begin{schemedisplay}
 (wcm 1 (fac (- 1 1) (* 1 2)))
 (wcm 1 (fac 0 (* 1 2)))
 (wcm 1 (fac 0 2))
 (wcm 1 (if (zero? 0) (begin (print (ccm)) 2) ...))
 (wcm 1 (begin (print (ccm)) 2))
 (wcm 1 (begin (print '(1)) 2))
-'(1)
 (wcm 1 (begin 2))
 (wcm 1 2)
 2
 \end{schemedisplay}
-and the tail-call behavior is clear.
-
-
+The visible effect of the call is
+\begin{verbatim}
+> (fac 2 1)
+(1)
+2
+\end{verbatim}
+and the influence of the tail-call behavior is evident.
 
 %Language transformations must be meaningful: they must preserve meaning or provide it. Continuation marks have special meaning in the presence of tail-call optimization.
 % uses of language transformation:
