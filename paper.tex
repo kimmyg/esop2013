@@ -187,7 +187,7 @@ E=\app{E}{e}\,|\,\app{v}{E}\,|\,\hole
 \end{equation}
 where $\hole$ denotes a ``hole'' in the evaluation context, the ultimate destination of the evaluation of the expression that previously resided there.
 
-The semantics of \lv\ are defined simply by
+The reduction relation of \lv\ is defined simply by
 \begin{align}
 E[\app{\abs{x}{e}}{v}]  &\rr E[e[x\leftarrow v]]
 \end{align}
@@ -210,7 +210,7 @@ F=\, &\app{E}{e}\,|\,\app{v}{E}\,|\,\wcm{E}{e}\,|\,\hole
 \end{align}
 The definition of $E$ is crafted to prevent directly nested \scheme'wcm' directives from occurring in valid evaluation contexts.
 
-The semantics of \cm\ are
+The reduction relation of \cm\ is defined by
 \begin{align}
 E[\app{\abs{x}{e}}{v}]  &\rr E[e[x\leftarrow v]]\label{reduction}\\
 E[\wcm{v}{\wcm{v'}{e}}] &\rr E[\wcm{v'}{e}]\label{tail-enforce}\\
@@ -240,63 +240,20 @@ This definition formalizes the intuition given earlier regarding the behavior of
 
 %The accumulator-passing style definition of $\chi$ has the effect of ordering the marks from most- to least-recently placed.
 
+Let $\lvrr$ denote the reduction relation for \lv\ and $\lvrrs$ its transitive closure. Similarly, let $\cmrr$ denote the reduction relation for \cm\ and $\cmrrs$ its transitive closure. We will use the more specific notation when $\rightarrow$ is potentially ambiguous.
+
 With the source and target languages formally specified, we can now examine a language transformation in earnest.
 
-\section{Transformation}
-
-As transformations, desugarings put the meaning of one construct in terms of another. If the meaning of the former was given only informally, the desugaring offers a new definition as formal as the definition of the latter. In this way, desugarings offer a convenient way to provide meaning to a construct and avoid enlarging the language. If, however, the sugared language already has a formal meaning, as does \cm, the desugaring must preserve it.
-
-We term our transformation from \cm\ to \lv\ $\mathcal{C}$, as in \emph{compile}, since we are, in essence, compiling away continuation marks. The transformation $\mathcal{C}$ is defined over each syntactic form of \cm. In order to preserve the meaning of \cm, $\mathcal{C}$ must commute with evaluation. More precisely, the following property should hold for programs $p\in\lambda_{cm}$:
-\[
-\begin{array}{ccc}
-p & \cmrrs & v\\
-\downarrow_\mathcal{C} & & \downarrow_\mathcal{C}\\
-\C{p} & \lvrrs & \C{v}
-\end{array}
-\]
-or, succinctly,
-\begin{equation}
-\label{meaning-preservation-property}
-p\cmrrs v\implies\C{p}\lvrrs\C{v}
-\end{equation}
-
-The essence of \cm\ is that programs can apply information to and observe information about the context in which they are evaluated. Programs in \lv\ have no such facility. We can simulate this facility by explicitly passing contextual information to each term as it is evaluated. We can define $\mathcal{C}$ to transform \scheme'wcm' directives to manipulate this information and \scheme'ccm' directives to access it. In other words, we can transform \cm\ programs to mark-passing style.
-
-However, marks alone do not account for the tail-call behavior specified by rule \ref{wcm-collapse}. Since tail-call behavior is observable (if indirectly) to \cm\ programs, we must also provide to each term information about the position in which it is evaluated. Specifically, each \scheme'wcm' directive must be 
-
-can frame this information in terms of the evaluation context and 
-
-
-This realization guides the intuition behind the transform: to propagate contextual information to each expression, manipulating it appropriately as the context changes.
-
-The treatment of \scheme'wcm' will require care as it is especially sensitive to evaluation order. Assuming termination for all constituent evaluations, consider
-\begin{align*}
-       &E[\wcm{e_0}{\wcm{e_1}{e_2}}]\\
-\cmrrs &E[\wcm{v_0}{\wcm{e_1}{e_2}}]\\
-\cmrrs &E[\wcm{v_0}{\wcm{v_1}{e_2}}]\\
-\cmrr  &E[\wcm{v_1}{e_2}]\\
-\cmrrs &E[\wcm{v_1}{v_2}]\\
-\cmrr  &E[v_2]
-\end{align*}
-We will need to arrange arguments in such a way that the natural call-by-value evaluation order of \lv\ accomplishes correct evaluation order according to the semantics of \cm.
-
-The treatment of \scheme'ccm' simply needs access to the evaluation of $\chi$ on the current context. As \lv\ lacks any facility to observe the context, the transformation explicitly provides this information to each \scheme'ccm' expression. The $\chi$ metafunction is continuous in the sense that a small change in the prefix of the input effects only a small change in the prefix of the output, a consequence of its particular recursive definition. This fact means that it is possible to compute $\chi$ incrementally. The transform then ensures that each expression had access to information about its own context.
-
-Finally, we address the preservation of proper tail-call behavior. Even though tail calls exist in \lv--indeed, they are prevalent--their behavior does not honor proper tail-call behavior through the transform. Thus, we maintain information about the immediate context of the program: specifically, whether evaluation is occurring directly within the body of a \scheme'wcm' expression.
-
-All together, the transformation adds three arguments to every term $e$: the continuation $k$ representative of the current context $E$; a flag $f$ encoding whether evaluation is occurring with the body of a \scheme'wcm' expression; and the transformed value $m$ of $\chi$ for the current context $\C{\chi(E)}$.
-
-The formal definition of $\mathcal{C}$ follows.
-
-\newenvironment{schemedefn}[1]{\begin{definition}$#1$}{\end{definition}}
-\newenvironment{namedschemedefn}[2]{\begin{definition}\label{#1}$#2$}{\end{definition}}
-
+\setkeyword{cons snd}
 \setspecialsymbol{lambda}{$\lambda$}
 \setspecialsymbol{e_0}{$e_0$}
 \setspecialsymbol{e_0p}{$e'_0$}
 \setspecialsymbol{Ce_0}{$\C{e_0}$}
 \setspecialsymbol{Ce_0p}{$\C{e'_0}$}
+\setspecialsymbol{x_1}{$x_1$}
+\setspecialsymbol{x_n}{$x_n$}
 \setspecialsymbol{e_1}{$e_1$}
+\setspecialsymbol{e_n}{$e_n$}
 \setspecialsymbol{Ce_1}{$\C{e_1}$}
 \setspecialsymbol{Ce_1p}{$\C{e'_1}$}
 \setspecialsymbol{Cv}{$\C{v}$}
@@ -322,6 +279,7 @@ The formal definition of $\mathcal{C}$ follows.
 \setspecialsymbol{TRUE}{$\mathbf{true}$}
 \setspecialsymbol{FALSE}{$\mathbf{false}$}
 \setspecialsymbol{PAIR}{$\mathbf{pair}$}
+\setspecialsymbol{CONS}{$\mathbf{cons}$}
 \setspecialsymbol{FST}{$\mathbf{fst}$}
 \setspecialsymbol{SND}{$\mathbf{snd}$}
 \setspecialsymbol{NIL}{$\mathbf{nil}$}
@@ -332,33 +290,147 @@ The formal definition of $\mathcal{C}$ follows.
 \newcommand{\pair}[2]{((\mathbf{pair}\,#1)\,#2)}
 \newcommand{\eval}[1]{\overline{#1}}
 
+\section{Transformation}
+
+As transformations, desugarings put the meaning of one construct in terms of another. If the meaning of the former was given only informally, the desugaring offers a new definition as formal as the definition of the latter. In this way, desugarings offer a convenient way to provide meaning to a construct and avoid enlarging the language. If, however, the sugared language already has a formal meaning, as does \cm, the desugaring must preserve it.
+
+We will define a transformation from \cm\ to \lv\ and term it $\mathcal{C}$, as in \emph{compile}, since we are, in essence, compiling away continuation marks. In order to preserve the meaning of \cm, $\mathcal{C}$ must commute with evaluation. More precisely, for programs $p\in\lambda_{cm}$,
+\[
+\begin{array}{ccc}
+p & \cmrrs & v\\
+\downarrow_\mathcal{C} & & \downarrow_\mathcal{C}\\
+\C{p} & \lvrrs & \C{v}
+\end{array}
+\]
+should hold, or, more succinctly,
+\begin{equation}
+\label{meaning-preservation-property}
+p\cmrrs v\implies\C{p}\lvrrs\C{v}
+\end{equation}
+
+\subsection{Intuition}
+
+The essence of \cm\ is that programs can apply information to and observe information about the context in which they are evaluated. Programs in \lv\ have no such facility. We can simulate this facility by explicitly passing contextual information to each term as it is evaluated. We can define $\mathcal{C}$ to transform \scheme'wcm' directives to manipulate this information and \scheme'ccm' directives to access it. Intuitively, we can transform \cm\ programs to mark-passing style.
+
+However, marks alone do not account for the tail-call behavior specified by rule \ref{tail-enforce}. Since tail-call behavior is observable (if indirectly) by \cm\ programs, we must also provide to each term information about the position in which it is evaluated. Specifically, each transformed \scheme'wcm' directive must be notified whether it is evaluated in tail position of an enclosing \scheme'wcm' directive as it must behave specially if so. Thus, in addition to passing the current continuation marks, the transform should pass a flag to each term indicating whether it is evaluated in tail position of a \scheme'wcm' directive.
+
+%Since this is a dynamic property of the evaluation, we do not attempt to infer it statically.
+
+These two pieces of information suffice to correctly simulate continuation marks.
+
+%These two functions of the context are sufficient to simulate continuation marks, and they characterize the purpose/approach of the transform: to propagate contextual information to each expression, manipulating it appropriately as the context changes. With this in mind, we now formally define $\mathcal{C}$.
+
+%The transformation $\mathcal{C}$ is inductively defined over each syntactic form of \cm.
+
+
+
+%The treatment of \scheme'wcm' will require care as it is especially sensitive to evaluation order. Assuming termination for all constituent evaluations, consider
+%\begin{align*}
+%       &E[\wcm{e_0}{\wcm{e_1}{e_2}}]\\
+%\cmrrs &E[\wcm{v_0}{\wcm{e_1}{e_2}}]\\
+%\cmrrs &E[\wcm{v_0}{\wcm{v_1}{e_2}}]\\
+%\cmrr  &E[\wcm{v_1}{e_2}]\\
+%\cmrrs &E[\wcm{v_1}{v_2}]\\
+%\cmrr  &E[v_2]
+%\end{align*}
+%We will need to arrange arguments in such a way that the natural call-by-value evaluation order of \lv\ accomplishes correct evaluation order according to the semantics of \cm.
+
+%The treatment of \scheme'ccm' simply needs access to the evaluation of $\chi$ on the current context. As \lv\ lacks any facility to observe the context, the transformation explicitly provides this information to each \scheme'ccm' expression. The $\chi$ metafunction is continuous in the sense that a small change in the prefix of the input effects only a small change in the prefix of the output, a consequence of its particular recursive definition. This fact means that it is possible to compute $\chi$ incrementally. The transform then ensures that each expression had access to information about its own context.
+
+%Finally, we address the preservation of proper tail-call behavior. Even though tail calls exist in \lv--indeed, they are prevalent--their behavior does not honor proper tail-call behavior through the transform. Thus, we maintain information about the immediate context of the program: specifically, whether evaluation is occurring directly within the body of a \scheme'wcm' expression.
+
+%All together, the transformation adds three arguments to every term $e$: the continuation $k$ representative of the current context $E$; a flag $f$ encoding whether evaluation is occurring with the body of a \scheme'wcm' expression; and the transformed value $m$ of $\chi$ for the current context $\C{\chi(E)}$.
+
+%The formal definition of $\mathcal{C}$ follows.
+
+With this in mind, consider a conceptual transformation \scheme|C[(rator-expr rand-expr)]| as
+\begin{schemedisplay}
+(lambda (flag)
+  (lambda (marks)
+    (let ((rator-value ((C[rator-expr] FALSE) marks))
+          (rand-value ((C[rand-expr] FALSE) marks))
+      (((rator-value rand-value) flag) marks))))
+\end{schemedisplay}
+ignoring for the moment that \scheme'let' is in neither \lv\ or \cm. This definition captures that
+\begin{enumerate}
+\item before evaluation, we expect \scheme'flag' to indicate tail position information and \scheme'marks' to provide a list of the current continuation marks,
+\item we would like to evaluate \scheme'C[rator-expr]' and \scheme'C[rand-expr]' in the same manner, providing to each its contextual information--specifically that neither is evaluated in tail position of a \scheme'wcm' directive and the continuation marks for each are unchanged from the parent context,
+\item and, following evaluation of operator and operand and application, evaluation of the resultant term is performed with the original contextual information.
+\end{enumerate}
+
+Now consider a conceptual transformation \scheme|C[(wcm mark-expr body-expr)]| as
+\begin{schemedisplay}
+(lambda (flag)
+  (lambda (marks)
+    ((C[body-expr] TRUE) (let ((mark-value ((C[mark-expr] FALSE) marks))
+                               (rest-marks (if flag (snd marks) marks)))
+                           (cons mark-value rest-marks)))))
+\end{schemedisplay}
+with similar caveats as the previous case. This definition captures that
+\begin{enumerate}
+\item as in application, we expect \scheme'flag' to indicate tail position information and \scheme'marks' to provide a list of the current continuation marks,
+\item we evaluate \scheme'mark-expr' with correct contextual information,
+\item we discard the first continuation mark of the parent context if evaluation is occurring in tail position of a \scheme'wcm' directive,
+\item and we evaluate \scheme'C[body-expr]' with the correct tail-position flag and current continuation marks.
+\end{enumerate}
+
+Finally, consider the conceptual transformation \scheme|C[(ccm)]| as
+\begin{schemedisplay}
+(lambda (flag)
+  (lambda (marks)
+    marks))
+\end{schemedisplay}
+wherein we reap the fruits of simplicity from our laborious passing: this definition is gratifyingly direct.
+
+The conceptual transformation of variables \scheme'x' and values \scheme'(lambda (x) e)' is straightforward.
+
+We now address the absence of \scheme'let', \scheme'if', \scheme'cons', etc. from \lv.
+
+We can express the \scheme'let' construct in \lv\ with application. An expression such as
+\begin{schemedisplay}
+(let ((x_1 e_1)
+      ...
+      (x_n e_n))
+  e)
+\end{schemedisplay}
+can be interpreted as
+\begin{schemedisplay}
+(...((lambda (x_1) ... (lambda (x_n)
+           e)...) e_1) ...) e_n)
+\end{schemedisplay}
+which is the curried form of
+\begin{schemedisplay}
+((lambda (x_1 ... x_n)
+           e) e_1 ... e_n)
+\end{schemedisplay}
+
+We use the Church encodings of \scheme'if' and conditionals as well as for list-manipulation operators \scheme{cons}, etc. \cite{barendregt1984lambda}.
+ 
+\subsection{One final concern}
+
+Our choice to keep the core language small by omitting lists as primitive values has the consequence of complicating our transform somewhat. Because lists are defined in terms of \lc\ values which are themselves touched by the transform and because of the commutativity property that $\mathcal{C}$ must satisfy, we cannot deal with a list of continuation marks directly--we must instead deal with a transformed list of transformed continuation marks.
+
+\newenvironment{schemedefn}[1]{\begin{definition}$#1$}{\end{definition}}
+\newenvironment{namedschemedefn}[2]{\begin{definition}\label{#1}$#2$}{\end{definition}}
+
+
+
 \subsection{Useful Shorthand}
 
 We first define a useful shorthand.
 
-\begin{definition}
-$\true=\abs{x}{\abs{y}{x}}$
-\end{definition}
-
-\begin{definition}
-$\false=\abs{x}{\abs{y}{y}}$
-\end{definition}
-
-\begin{definition}
-$\mathbf{pair}=\abs{a}{\abs{b}{\abs{z}{\app{\app{z}{a}}{b}}}}$
-\end{definition}
-
-\begin{definition}
-$\mathbf{fst}=\abs{p}{\app{p}{\true}}$
-\end{definition}
-
-\begin{definition}
-$\mathbf{snd}=\abs{p}{\app{p}{\false}}$
-\end{definition}
-
-\begin{definition}
-$\nil=\false$
-\end{definition}
+\begin{figure}
+\begin{align*}
+\true         &= \abs{x}{\abs{y}{x}}\\
+\false        &= \abs{x}{\abs{y}{y}}\\
+\mathbf{pair} &= \abs{a}{\abs{b}{\abs{z}{\app{\app{z}{a}}{b}}}}\\
+\mathbf{fst}  &= \abs{p}{\app{p}{\true}}\\
+\mathbf{snd}  &= \abs{p}{\app{p}{\false}}\\
+\nil          &= \false
+\end{align*}
+\label{chuch-encodings}
+\caption{Church encodings of booleans and lists}
+\end{figure}
 
 \subsection{Definition of $\mathcal{C}$}
 
@@ -370,10 +442,10 @@ The definition of $\mathcal{C}$ over the five syntactic forms of \cm\ follows.
    (lambda (f)
      (lambda (m)
        (((Ce_0
-          (lambda (a)
+          (lambda (v_0)
             (((Ce_1
-               (lambda (b)
-                 ((((a b) k) f) m)))
+               (lambda (v_1)
+                 ((((v_0 v_1) k) f) m)))
               FALSE)
              m)))
          FALSE)
@@ -389,12 +461,12 @@ The evaluation of operator and operand in an application enlarges the continuati
   (lambda (f)
     (lambda (m)
       (((Ce_0
-         (lambda (n) ((lambda (k) 
+         (lambda (v_0) ((lambda (k) 
                         (k (((m (lambda (x) x)) (lambda (z) z)) (lambda (z) z))))
                       (lambda (t) 
                         ((lambda (k) (k ((f C[(SND t)]) t)))
                          (lambda (r) 
-                           (((Ce_1 k) TRUE) C[(PAIR v r)])))))))
+                           (((Ce_1 k) TRUE) C[(PAIR v_0 r)])))))))
         FALSE)
        m))))
 \end{schemedisplay}
