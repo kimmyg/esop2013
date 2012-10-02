@@ -462,18 +462,12 @@ The definition of $\mathcal{C}$ over the five syntactic forms of \cm\ follows.
 
 \begin{schemedefn}{\scheme|C[(rator-expr rand-expr)]|}
 \begin{schemedisplay}
-(lambda (kont)
-   (lambda (flag)
-     (lambda (marks)
-       (((C[rator-expr]
-          (lambda (rator-value)
-            (((C[rand-expr]
-               (lambda (rand-value)
-                 ((((rator-value rand-value) kont) flag) marks)))
-              FALSE)
-             m)))
-         FALSE)
-        m))))
+(lambda (flags)
+  (lambda (marks)
+    (((((C[rator-expr] FALSE) marks)
+       ((C[rand-expr] FALSE) marks))
+      flags)
+     marks)))
 \end{schemedisplay}
 \end{schemedefn}
 
@@ -481,18 +475,12 @@ The evaluation of operator and operand in an application enlarges the continuati
 
 \begin{schemedefn}{\scheme|C[(wcm mark-expr body-expr)]|}
 \begin{schemedisplay}
-(lambda (kont)
-  (lambda (flag)
-    (lambda (marks)
-      (((C[mark-expr]
-         (lambda (mark-value) ((lambda (k_1) 
-                                 (k_1 (((marks (lambda (x) x)) (lambda (z) z)) (lambda (z) z))))
-                               (lambda (t) 
-                                 ((lambda (k_2) (k_2 ((f C[(SND t)]) t)))
-                                   (lambda (rest) 
-                                     (((C[body-expr] kont) TRUE) C[(CONS mark-value rest)])))))))
-        FALSE)
-       marks))))
+(lambda (flag)
+  (lambda (marks)
+    ((C[body-expr] TRUE)
+     (((lambda (mark-value) (lambda (rest-marks) (lambda (z) C[((z mark-value) rest-marks)])))
+       ((C[mark-expr] FALSE) marks))
+      ((flag ((C[(SND marks)] (lambda (z) z)) (lambda (z) z))) marks)))))
 \end{schemedisplay}
 \end{schemedefn}
 
@@ -507,10 +495,9 @@ E &\text{otherwise}
 
 \begin{schemedefn}{\scheme|C[(ccm)]|}
 \begin{schemedisplay}
-(lambda (kont)
-  (lambda (flag)
-    (lambda (marks)
-      (((marks kont) (lambda (z) z)) (lambda (z) z)))))
+(lambda (flag)
+  (lambda (marks)
+    marks))
 \end{schemedisplay}
 \end{schemedefn}
 
