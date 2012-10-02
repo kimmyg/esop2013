@@ -297,7 +297,7 @@ With the source and target languages formally specified, we can now examine a la
 \newcommand{\true}{\mathbf{true}}
 \newcommand{\false}{\mathbf{false}}
 \newcommand{\nil}{\mathbf{nil}}
-\newcommand{\pair}[2]{((\mathbf{pair}\,#1)\,#2)}
+\newcommand{\cons}[2]{((\mathbf{cons}\,#1)\,#2)}
 \newcommand{\eval}[1]{\overline{#1}}
 
 \section{Transformation}
@@ -451,14 +451,15 @@ The definition of $\mathcal{C}$ over the five syntactic forms of \cm\ follows.
 \begin{align*}
 \true         &= \abs{x}{\abs{y}{x}}\\
 \false        &= \abs{x}{\abs{y}{y}}\\
-\mathbf{pair} &= \abs{a}{\abs{b}{\abs{z}{\app{\app{z}{a}}{b}}}}\\
-\mathbf{fst}  &= \abs{p}{\app{p}{\true}}\\
+\mathbf{cons} &= \abs{a}{\abs{b}{\abs{z}{\app{\app{z}{a}}{b}}}}\\
 \mathbf{snd}  &= \abs{p}{\app{p}{\false}}\\
 \nil          &= \false
 \end{align*}
 \label{chuch-encodings}
 \caption{Church encodings of booleans and lists}
 \end{figure}
+
+The formal transformation of application follows the \scheme'let' version exactly except the definitions of \scheme'rator-value' and \scheme'rand-value' are folded directly in.
 
 \begin{schemedefn}{\scheme|C[(rator-expr rand-expr)]|}
 \begin{schemedisplay}
@@ -471,7 +472,9 @@ The definition of $\mathcal{C}$ over the five syntactic forms of \cm\ follows.
 \end{schemedisplay}
 \end{schemedefn}
 
-The evaluation of operator and operand in an application enlarges the continuation, so marks made within said evaluation will not interfere with pre-existent marks, and this is reflected by the $\false$ flag passed to each. Once the arguments are evaluated, the new context is unnecessary and discarded. The application itself inherits the flag of the original context.
+%The evaluation of operator and operand in an application enlarges the continuation, so marks made within said evaluation will not interfere with pre-existent marks, and this is reflected by the $\false$ flag passed to each. Once the arguments are evaluated, the new context is unnecessary and discarded. The application itself inherits the flag of the original context.
+
+The formal transformation of a \scheme'wcm' directive is also extremely similar to the \scheme'let' version. The definition of \scheme'C[cons]' is unfolded and simplified.
 
 \begin{schemedefn}{\scheme|C[(wcm mark-expr body-expr)]|}
 \begin{schemedisplay}
@@ -480,18 +483,20 @@ The evaluation of operator and operand in an application enlarges the continuati
     ((C[body-expr] TRUE)
      (((lambda (mark-value) (lambda (rest-marks) (lambda (z) C[((z mark-value) rest-marks)])))
        ((C[mark-expr] FALSE) marks))
-      ((flag ((C[(SND marks)] (lambda (z) z)) (lambda (z) z))) marks)))))
+      ((flag Cp[(SND marks)]) marks)))))
 \end{schemedisplay}
 \end{schemedefn}
 
-The definition over \scheme'wcm' expressions is the only one to make explicit use of the value of the flag. Following the evaluation of the mark expression, rule \ref{tail-enforce} is applied, if necessary. The continuity of $\chi$ allows us to construct $\chi(E''[\wcm{v_0}{e_1}])$ from $\chi(E)$ where 
+%The definition over \scheme'wcm' expressions is the only one to make explicit use of the value of the flag. Following the evaluation of the mark expression, rule \ref{tail-enforce} is applied, if necessary. The continuity of $\chi$ allows us to construct $\chi(E''[\wcm{v_0}{e_1}])$ from $\chi(E)$ where 
 
-\begin{equation}
-E''=\begin{cases}
-E' &\text{if $E=E'[\wcm{v'}{\hole}]$ for some $E'$ and $v'$}\\
-E &\text{otherwise}
-\end{cases}
-\end{equation}
+%\begin{equation}
+%E''=\begin{cases}
+%E' &\text{if $E=E'[\wcm{v'}{\hole}]$ for some $E'$ and $v'$}\\
+%E &\text{otherwise}
+%\end{cases}
+%\end{equation}
+
+The \scheme'let' version of the transformation of a \scheme'ccm' directive remains unchanged.
 
 \begin{schemedefn}{\scheme|C[(ccm)]|}
 \begin{schemedisplay}
@@ -501,15 +506,28 @@ E &\text{otherwise}
 \end{schemedisplay}
 \end{schemedefn}
 
-The simplicity of the definition over \scheme`ccm` expressions offsets the work performed by the other definitions: it simply returns the list passed in.
+%The simplicity of the definition over \scheme`ccm` expressions offsets the work performed by the other definitions: it simply returns the list passed in.
 
-\begin{definition}
-$\C{v_0}=\C{\abs{x}{e'_0}}=\abs{k}{\abs{f}{\abs{m}{\app{k}{\abs{x}{\C{e'_0}}}}}}$
-\end{definition}
+Like other terms, values are modified to receive contextual information. However, it is ignored.
+% we use this fact a bit
 
-\begin{definition}
-$\C{x}=\abs{k}{\abs{f}{\abs{m}{\app{k}{x}}}}$
-\end{definition}
+\begin{schemedefn}{\scheme|C[v]|=\scheme|C[(lambda (x) e)]|}
+\begin{schemedisplay}
+(lambda (flag)
+  (lambda (marks)
+    (lambda (x) C[e])))
+\end{schemedisplay}
+\end{schemedefn}
+
+% Variables have the property that, when substitution occurs, they reconstitute values.
+
+\begin{schemedefn}{\scheme|C[x]|}
+\begin{schemedisplay}
+(lambda (flag)
+  (lambda (marks)
+    x))
+\end{schemedisplay}
+\end{schemedefn}
 
 %\subsection{Example: Factorial}
 
@@ -620,9 +638,6 @@ The reduction relation requires one metafunction to perform substitution. We omi
   [(lambdav-subst x_1 v_1 error)
    error])
 \end{schemedisplay}
-
-
-
 
 \setspecialsymbol{lambdacm}{$\lambda$cm}
 \setspecialsymbol{lambdacm-rr}{$\lambda$cm-rr}
@@ -757,18 +772,18 @@ var fac = function( n ) {
 
 A transformation of this function desugars these constructs into valid JavaScript.
 \begin{verbatim}
-var fac = function( f, m ) {
+var fac = function( flag, marks ) {
     return function( n ) {
         if( n == 0 ) {
-            console.log( (function( f, m ) { return m; })( false, m ) );
+            console.log( (function( flag, marks ) { return marks; })( false, marks ) );
             return 1;
         }
         else {
-            return (function( f, m ) {
-                return (function( v ) {
-                    return n * fac( false, [ v ].concat( f ? m.slice( 1 ) : m ) )( n - 1 );
-                })( n );
-            })( f, m );
+            return (function( flag, marks ) {
+                return (function( mark_value, rest_marks ) {
+                    return n * fac( false, [ mark_value ].concat( rest_marks ) )( n - 1 );
+                })( n, f ? m.slice( 1 ) : m );
+            })( flag, marks );
         }
     }
 }
