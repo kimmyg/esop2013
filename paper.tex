@@ -4,6 +4,7 @@
 %\usepackage{amsthm}
 \usepackage{amssymb}
 \usepackage{slatex}
+\usepackage{color}
 
 \title{Instant Continuation Marks--Just Add $\lambda$}
 
@@ -17,6 +18,8 @@
 % built in to the compiler if we don't want. In addition, it makes it
 % easier to do a type system.
 
+\spnewtheorem{plaindef}{Definition}{\bfseries}{\rmfamily}
+
 \setkeyword{wcm ccm with-continuation-mark current-continuation-marks}
 \setkeyword{print fac zero?}
 
@@ -25,6 +28,8 @@
 \newcommand{\lc}[0]{$\lambda$-calculus}
 \newcommand{\wcm}[2]{(\mathrm{wcm}\,#1\,#2)}
 \newcommand{\ccm}[0]{(\mathrm{ccm})}
+\newcommand{\wcmb}[2]{(\mathbf{wcm}\,#1\,#2)}
+\newcommand{\ccmb}[0]{(\mathbf{ccm})}
 \newcommand{\app}[2]{(#1\,#2)}
 \newcommand{\abs}[2]{(\lambda\,(#1)\,#2)}
 \newcommand{\hole}[0]{\bullet}
@@ -35,6 +40,9 @@
 \newcommand{\cmrr}[0]{\rightarrow_{cm}}
 \newcommand{\cmrrs}[0]{\rightarrow_{cm}^{*}}
 \newcommand{\C}[1]{\mathcal{C}[#1]}
+\newcommand{\Cp}[1]{\mathcal{C}'[#1]}
+\newcommand{\evalv}[1]{\mathrm{eval}_v(#1)}
+\newcommand{\evalcm}[1]{\mathrm{eval}_{cm}(#1)}
 
 \begin{document}
 
@@ -302,11 +310,27 @@ p & \cmrrs & v\\
 \C{p} & \lvrrs & \C{v}
 \end{array}
 \]
-should hold, or, more succinctly,
+should hold, or, more concisely,
 \begin{equation}
 \label{meaning-preservation-property}
 p\cmrrs v\implies\C{p}\lvrrs\C{v}
 \end{equation}
+
+If we define 
+\begin{equation}
+\evalcm{p}=\begin{cases}
+v     &\text{if $p\cmrrs v$}\\
+\perp &\text{if $p\cmrrs\cdots$}
+\end{cases}
+\end{equation}
+and
+\begin{equation}
+\evalv{p}=\begin{cases}
+v     &\text{if $p\lvrrs v$}\\
+\perp &\text{if $p\lvrrs\cdots$}
+\end{cases}
+\end{equation}
+we can state this yet more concisely by $\C{\evalcm{p}}=\evalv{\C{p}}$.
 
 \subsection{Intuition}
 
@@ -317,31 +341,6 @@ However, marks alone do not account for the tail-call behavior specified by rule
 %Since this is a dynamic property of the evaluation, we do not attempt to infer it statically.
 
 These two pieces of information suffice to correctly simulate continuation marks.
-
-%These two functions of the context are sufficient to simulate continuation marks, and they characterize the purpose/approach of the transform: to propagate contextual information to each expression, manipulating it appropriately as the context changes. With this in mind, we now formally define $\mathcal{C}$.
-
-%The transformation $\mathcal{C}$ is inductively defined over each syntactic form of \cm.
-
-
-
-%The treatment of \scheme'wcm' will require care as it is especially sensitive to evaluation order. Assuming termination for all constituent evaluations, consider
-%\begin{align*}
-%       &E[\wcm{e_0}{\wcm{e_1}{e_2}}]\\
-%\cmrrs &E[\wcm{v_0}{\wcm{e_1}{e_2}}]\\
-%\cmrrs &E[\wcm{v_0}{\wcm{v_1}{e_2}}]\\
-%\cmrr  &E[\wcm{v_1}{e_2}]\\
-%\cmrrs &E[\wcm{v_1}{v_2}]\\
-%\cmrr  &E[v_2]
-%\end{align*}
-%We will need to arrange arguments in such a way that the natural call-by-value evaluation order of \lv\ accomplishes correct evaluation order according to the semantics of \cm.
-
-%The treatment of \scheme'ccm' simply needs access to the evaluation of $\chi$ on the current context. As \lv\ lacks any facility to observe the context, the transformation explicitly provides this information to each \scheme'ccm' expression. The $\chi$ metafunction is continuous in the sense that a small change in the prefix of the input effects only a small change in the prefix of the output, a consequence of its particular recursive definition. This fact means that it is possible to compute $\chi$ incrementally. The transform then ensures that each expression had access to information about its own context.
-
-%Finally, we address the preservation of proper tail-call behavior. Even though tail calls exist in \lv--indeed, they are prevalent--their behavior does not honor proper tail-call behavior through the transform. Thus, we maintain information about the immediate context of the program: specifically, whether evaluation is occurring directly within the body of a \scheme'wcm' expression.
-
-%All together, the transformation adds three arguments to every term $e$: the continuation $k$ representative of the current context $E$; a flag $f$ encoding whether evaluation is occurring with the body of a \scheme'wcm' expression; and the transformed value $m$ of $\chi$ for the current context $\C{\chi(E)}$.
-
-%The formal definition of $\mathcal{C}$ follows.
 
 With this in mind, consider a conceptual transformation \scheme|C[(rator-expr rand-expr)]| as
 \begin{schemedisplay}
@@ -405,13 +404,43 @@ which is the curried form of
 \end{schemedisplay}
 
 We use the Church encodings of \scheme'if' and conditionals as well as for list-manipulation operators \scheme{cons}, etc. \cite{barendregt1984lambda}.
- 
+
+\subsection{Initiation}
+
+Abstracting terms has the effect of suspending evaluation. When an entire program is transformed, all evaluation is suspended. It can be initiated by providing contextual information. At the top level, the context is empty, so we pass the contextual information for the empty context: \scheme'FALSE' indicating evaluation is \emph{not} occurring in \scheme'wcm' tail position and \scheme'NIL', an empty list of marks.
+
+We can accommodate this by defining a top-level transform $\mathcal{C}'$ in terms of $\mathcal{C}$ by
+\begin{equation}
+\Cp{p}=\app{\app{\C{p}}{\false}}{\nil}
+\end{equation}
+
+and stating our commutativity property as
+\begin{equation}
+\Cp{\evalcm{p}}=\evalv{\Cp{p}}
+\end{equation}
+which is equivalent to
+\begin{equation}
+\app{\app{\C{\evalcm{p}}}{\false}}{\nil}=\evalv{\app{\app{\C{p}}{\false}}{\nil}}
+\end{equation}
+
 \subsection{One final concern}
 
 Our choice to keep the core language small by omitting lists as primitive values has the consequence of complicating our transform somewhat. Because lists are defined in terms of \lc\ values which are themselves touched by the transform and because of the commutativity property that $\mathcal{C}$ must satisfy, we cannot deal with a list of continuation marks directly--we must instead deal with a transformed list of transformed continuation marks.
 
-\newenvironment{schemedefn}[1]{\begin{definition}$#1$}{\end{definition}}
-\newenvironment{namedschemedefn}[2]{\begin{definition}\label{#1}$#2$}{\end{definition}}
+For instance, consider the simple program \scheme|(ccm)|. $\Cp{\evalcm{\ccmb}}=\Cp{\nil}$, but
+\begin{align*}
+  &\evalv{\app{\app{\C{\ccmb}}{\false}}{\nil}}\\
+= &\evalv{\app{\app{\abs{\mathit{flag}}{\abs{\mathit{marks}}{\mathit{marks}}}}{\false}}{\nil}}\\
+= &\nil
+\end{align*}
+This is a problem because $\nil$ is not a primitive value but shorthand for the Church encoding of \scheme'nil', $\abs{x}{\abs{y}{y}}$. As an abstraction, it too is transformed. It is clear then that we must alter the commutativity requirement, as well as the transform, once more. The final commutativity property we seek is
+\begin{equation}
+\app{\app{\C{\evalcm{p}}}{\false}}{\C{\nil}}=\evalv{\app{\app{\C{p}}{\false}}{\C{\nil}}}
+\end{equation}
+
+
+\newenvironment{schemedefn}[1]{\begin{plaindef}#1}{\end{plaindef}}
+\newenvironment{namedschemedefn}[2]{\begin{plaindef}\label{#1}$#2$}{\end{plaindef}}
 
 
 
@@ -436,16 +465,16 @@ We first define a useful shorthand.
 
 The definition of $\mathcal{C}$ over the five syntactic forms of \cm\ follows.
 
-\begin{schemedefn}{\C{\app{e_0}{e_1}}}
+\begin{schemedefn}{\scheme|C[(rator-expr rand-expr)]|}
 \begin{schemedisplay}
-(lambda (k)
-   (lambda (f)
-     (lambda (m)
-       (((Ce_0
-          (lambda (v_0)
-            (((Ce_1
-               (lambda (v_1)
-                 ((((v_0 v_1) k) f) m)))
+(lambda (kont)
+   (lambda (flag)
+     (lambda (marks)
+       (((C[rator-expr]
+          (lambda (rator-value)
+            (((C[rand-expr]
+               (lambda (rand-value)
+                 ((((rator-value rand-value) kont) flag) marks)))
               FALSE)
              m)))
          FALSE)
@@ -455,20 +484,20 @@ The definition of $\mathcal{C}$ over the five syntactic forms of \cm\ follows.
 
 The evaluation of operator and operand in an application enlarges the continuation, so marks made within said evaluation will not interfere with pre-existent marks, and this is reflected by the $\false$ flag passed to each. Once the arguments are evaluated, the new context is unnecessary and discarded. The application itself inherits the flag of the original context.
 
-\begin{schemedefn}{\C{\wcm{e_0}{e_1}}}
+\begin{schemedefn}{\scheme|C[(wcm mark-expr body-expr)]|}
 \begin{schemedisplay}
-(lambda (k)
-  (lambda (f)
-    (lambda (m)
-      (((Ce_0
-         (lambda (v_0) ((lambda (k) 
-                        (k (((m (lambda (x) x)) (lambda (z) z)) (lambda (z) z))))
-                      (lambda (t) 
-                        ((lambda (k) (k ((f C[(SND t)]) t)))
-                         (lambda (r) 
-                           (((Ce_1 k) TRUE) C[(PAIR v_0 r)])))))))
+(lambda (kont)
+  (lambda (flag)
+    (lambda (marks)
+      (((C[mark-expr]
+         (lambda (mark-value) ((lambda (k) 
+                                 (k (((marks (lambda (x) x)) (lambda (z) z)) (lambda (z) z))))
+                               (lambda (t) 
+                                 ((lambda (k) (k ((f C[(SND t)]) t)))
+                                   (lambda (rest) 
+                                     (((C[body-expr] kont) TRUE) C[(CONS mark-value rest)])))))))
         FALSE)
-       m))))
+       marks))))
 \end{schemedisplay}
 \end{schemedefn}
 
@@ -481,12 +510,12 @@ E &\text{otherwise}
 \end{cases}
 \end{equation}
 
-\begin{schemedefn}{\C{\ccm}}
+\begin{schemedefn}{\scheme|C[(ccm)]|}
 \begin{schemedisplay}
-(lambda (k)
-  (lambda (f)
-    (lambda (m)
-      (((m k) (lambda (z) z)) (lambda (z) z)))))
+(lambda (kont)
+  (lambda (flag)
+    (lambda (marks)
+      (((marks kont) (lambda (z) z)) (lambda (z) z)))))
 \end{schemedisplay}
 \end{schemedefn}
 
