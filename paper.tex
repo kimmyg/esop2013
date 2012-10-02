@@ -173,7 +173,7 @@ With this understanding of continuation marks, we can now formalize them behavio
 
 \section{Language Core and Extension}
 
-In order to formalize continuation marks, we introduce an extension of the \lc with facilities to manipulate continuation marks and present its semantics in the style of Felleisen and Hieb \cite{felleisen1992revised}. Because our ultimate goal is a desugaring transform, we first introduce the target language of the transform, the \lc, in the same way.
+In order to formalize continuation marks, we introduce an extension of the \lc\ with facilities to manipulate continuation marks and present its semantics in the style of Felleisen and Hieb \cite{felleisen1992revised}. Because our ultimate goal is a desugaring transform, we first introduce the target language of the transform, the \lc, in the same way.
 
 \subsection{\lv}
 
@@ -262,6 +262,8 @@ With the source and target languages formally specified, we can now examine a la
 \setspecialsymbol{x_n}{$x_n$}
 \setspecialsymbol{e_1}{$e_1$}
 \setspecialsymbol{e_n}{$e_n$}
+\setspecialsymbol{k_1}{$k_1$}
+\setspecialsymbol{k_2}{$k_2$}
 \setspecialsymbol{Ce_1}{$\C{e_1}$}
 \setspecialsymbol{Ce_1p}{$\C{e'_1}$}
 \setspecialsymbol{Cv}{$\C{v}$}
@@ -342,7 +344,11 @@ However, marks alone do not account for the tail-call behavior specified by rule
 
 These two pieces of information suffice to correctly simulate continuation marks.
 
-With this in mind, consider a conceptual transformation \scheme|C[(rator-expr rand-expr)]| as
+\subsection{Concept}
+
+The definition of $\mathcal{C}$ entails a defined transformation of each syntactic form of \cm.
+
+With this in mind, consider a conceptual transformation of application, \scheme|C[(rator-expr rand-expr)]|, as
 \begin{schemedisplay}
 (lambda (flag)
   (lambda (marks)
@@ -357,7 +363,7 @@ ignoring for the moment that \scheme'let' is in neither \lv\ or \cm. This defini
 \item and, following evaluation of operator and operand and application, evaluation of the resultant term is performed with the original contextual information.
 \end{enumerate}
 
-Now consider a conceptual transformation \scheme|C[(wcm mark-expr body-expr)]| as
+Now consider a conceptual transformation of a \scheme'wcm' directive, \scheme|C[(wcm mark-expr body-expr)]|, as
 \begin{schemedisplay}
 (lambda (flag)
   (lambda (marks)
@@ -373,7 +379,7 @@ with similar caveats as the previous case. This definition captures that
 \item and we evaluate \scheme'C[body-expr]' with the correct tail-position flag and current continuation marks.
 \end{enumerate}
 
-Finally, consider the conceptual transformation \scheme|C[(ccm)]| as
+Finally, consider the conceptual transformation of a \scheme'ccm' directive, \scheme|C[(ccm)]|, as
 \begin{schemedisplay}
 (lambda (flag)
   (lambda (marks)
@@ -402,12 +408,13 @@ which is the curried form of
 ((lambda (x_1 ... x_n)
            e) e_1 ... e_n)
 \end{schemedisplay}
+We use this fact to construct the transformation and apply $\beta$-rule to simplify terms statically.
 
 We use the Church encodings of \scheme'if' and conditionals as well as for list-manipulation operators \scheme{cons}, etc. \cite{barendregt1984lambda}.
 
 \subsection{Initiation}
 
-Abstracting terms has the effect of suspending evaluation. When an entire program is transformed, all evaluation is suspended. It can be initiated by providing contextual information. At the top level, the context is empty, so we pass the contextual information for the empty context: \scheme'FALSE' indicating evaluation is \emph{not} occurring in \scheme'wcm' tail position and \scheme'NIL', an empty list of marks.
+Abstracting terms has the effect of suspending evaluation. When an entire program is transformed, all evaluation is suspended, and awaits arguments representing contextual information. At the top level, the context is empty, so we pass the contextual information for the empty context: \scheme'FALSE' indicating evaluation is \emph{not} occurring in \scheme'wcm' tail position and \scheme'NIL', an empty list of marks.
 
 We can accommodate this by defining a top-level transform $\mathcal{C}'$ in terms of $\mathcal{C}$ by
 \begin{equation}
@@ -427,26 +434,18 @@ which is equivalent to
 
 Our choice to keep the core language small by omitting lists as primitive values has the consequence of complicating our transform somewhat. Because lists are defined in terms of \lc\ values which are themselves touched by the transform and because of the commutativity property that $\mathcal{C}$ must satisfy, we cannot deal with a list of continuation marks directly--we must instead deal with a transformed list of transformed continuation marks.
 
-For instance, consider the simple program \scheme|(ccm)|. $\Cp{\evalcm{\ccmb}}=\Cp{\nil}$, but
-\begin{align*}
-  &\evalv{\app{\app{\C{\ccmb}}{\false}}{\nil}}\\
-= &\evalv{\app{\app{\abs{\mathit{flag}}{\abs{\mathit{marks}}{\mathit{marks}}}}{\false}}{\nil}}\\
-= &\nil
-\end{align*}
-This is a problem because $\nil$ is not a primitive value but shorthand for the Church encoding of \scheme'nil', $\abs{x}{\abs{y}{y}}$. As an abstraction, it too is transformed. It is clear then that we must alter the commutativity requirement, as well as the transform, once more. The final commutativity property we seek is
+For this reason, we adjust $\mathcal{C}'$ so that
 \begin{equation}
-\app{\app{\C{\evalcm{p}}}{\false}}{\C{\nil}}=\evalv{\app{\app{\C{p}}{\false}}{\C{\nil}}}
+\Cp{p}=\app{\app{\C{p}}{\false}}{\C{\nil}}
 \end{equation}
-
+and recognize that a fully-realized transform must be made aware of this.
 
 \newenvironment{schemedefn}[1]{\begin{plaindef}#1}{\end{plaindef}}
 \newenvironment{namedschemedefn}[2]{\begin{plaindef}\label{#1}$#2$}{\end{plaindef}}
 
+\subsection{Definition of $\mathcal{C}$}
 
-
-\subsection{Useful Shorthand}
-
-We first define a useful shorthand.
+The definition of $\mathcal{C}$ over the five syntactic forms of \cm\ follows.
 
 \begin{figure}
 \begin{align*}
@@ -460,10 +459,6 @@ We first define a useful shorthand.
 \label{chuch-encodings}
 \caption{Church encodings of booleans and lists}
 \end{figure}
-
-\subsection{Definition of $\mathcal{C}$}
-
-The definition of $\mathcal{C}$ over the five syntactic forms of \cm\ follows.
 
 \begin{schemedefn}{\scheme|C[(rator-expr rand-expr)]|}
 \begin{schemedisplay}
@@ -490,10 +485,10 @@ The evaluation of operator and operand in an application enlarges the continuati
   (lambda (flag)
     (lambda (marks)
       (((C[mark-expr]
-         (lambda (mark-value) ((lambda (k) 
-                                 (k (((marks (lambda (x) x)) (lambda (z) z)) (lambda (z) z))))
+         (lambda (mark-value) ((lambda (k_1) 
+                                 (k_1 (((marks (lambda (x) x)) (lambda (z) z)) (lambda (z) z))))
                                (lambda (t) 
-                                 ((lambda (k) (k ((f C[(SND t)]) t)))
+                                 ((lambda (k_2) (k_2 ((f C[(SND t)]) t)))
                                    (lambda (rest) 
                                      (((C[body-expr] kont) TRUE) C[(CONS mark-value rest)])))))))
         FALSE)
