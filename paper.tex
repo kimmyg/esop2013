@@ -60,12 +60,6 @@ We present direct and CPS-like transformations from the call-by-value $\lambda$-
 
 \section{Introduction}
 
-% motivate continuation marks
-% motivate continuation marks in more languages
-% discuss why they are not in more languages
-% discuss approaches to getting them in languages with pros/cons
-% ...culminating in our approach in terms of lambda
-
 Numerous programming language instruments rely on stack inspection to function. Statistical profilers sample the stack regularly to record active functions, algebraic steppers observe the stack to represent the evaluation context of an expression, and debuggers naturally require consistent access to the stack. In each of these scenarios, the instrument relies on implementation-specific information and must be maintained as the instrumented language undergoes optimizations and ventures across platforms. This makes these instruments brittle and increases the porting cost of the language ecosystem. Each would benefit from a generalized stack-inspection mechanism available within the instrumented language itself. If written in such an enhanced language, each instrument would be more robust, more easily modified, and would port for free.
 
 Continuation marks \cite{clements2006portable} are a programming language feature which generalizes stack inpection. Not only do they dramatically simplify correct instrumentation \cite{clements2001modeling}, they have been used to allow inspection-based dynamic security checks in the presence of tail-call optimization \cite{clements2004tail} and to express aspect-oriented programming in higher-order languagues \cite{tucker2003pointcuts}.
@@ -76,9 +70,10 @@ For example, the ubiquitous JavaScript is an ideal candidate for the addition of
 
 To avoid this roadblock, we instead take a macro-style approach; that is, we enhance the core language with facilities to manipulate continuation marks and desugar the enhanced language back to the core. To make our desugaring transformation portable to other languages, we define it over the \lc, the common core of most higher-order languages. With such a transformation, language semanticists do not need to reconcile the feature with other features in the language (provided they have already done so with $\lambda$) and their compiler writers do not need to worry about complicating their implementations (for the same reason).
 
-We begin by further explaining continuation marks. We then formalize them via the introduction of a core and enhanced language with Redex models for each. We discuss the necessary properties for a meaningful transform.  We present two transformations of continuation marks--one direct and one CPS-like--to the call-by-value \lc. We then prove a meaning-preservation theorem.
+We begin by further explaining continuation marks in section \ref{sec-continuation-marks}. We then formalize them via the introduction of a core and enhanced language in section \ref{sec-core-and-extension}. We discuss the necessary properties of a meaningful transformation between these languages. We present two transformations of continuation marks--one direct and one CPS-like--to the call-by-value \lc in section \ref{sec-transformation}. This is followed by a lightweight mechanized model for random testing in section \ref{sec-testing} and a proof of a meaning-preservation theorem in section \ref{sec-proof}. We finally apply it to JavaScript in section \ref{sec-javascript}.
 
 \section{Continuation Marks}
+\label{sec-continuation-marks}
 
 Continuation marks allow the program to annotate and observe the stack (or continuation). This is accomplished via two surface-level syntactic forms in the language: \scheme'with-continuation-mark', abbreviated \scheme'wcm'; and \scheme'current-continuation-marks', abbreviated \scheme'ccm'.
 
@@ -176,6 +171,7 @@ Using this mechanism, the principal onus of a statistical profiler, algebraic st
 With this understanding of continuation marks, we can now formalize them behaviorally.
 
 \section{Language Core and Extension}
+\label{sec-core-and-extension}
 
 In order to formalize continuation marks, we introduce an extension of the \lc\ with facilities to manipulate continuation marks and present its semantics in the style of Felleisen and Hieb \cite{felleisen1992revised}. Because our ultimate goal is a desugaring transform, we first introduce the target language of the transform, the \lc, in the same way.
 
@@ -309,6 +305,7 @@ With the source and target languages formally specified, we can now examine a la
 \newcommand{\eval}[1]{\overline{#1}}
 
 \section{Transformation}
+\label{sec-transformation}
 
 As transformations, desugarings put the meaning of one construct in terms of another. If the meaning of the former was given only informally, the desugaring offers a new definition as formal as the definition of the latter. In this way, desugarings offer a convenient way to provide meaning to a construct and avoid enlarging the language. If, however, the sugared language already has a formal meaning, as does \cm, the desugaring must preserve it.
 
@@ -440,19 +437,17 @@ which is equivalent to
 
 \subsection{Some final subtleties}
 
-Our choice to keep the core language small by omitting lists as primitive values has the consequence of complicating our transform somewhat. Because lists are defined in terms of \lc\ values which are themselves touched by the transform and because of the commutativity property that $\mathcal{C}$ must satisfy, we cannot deal with a list of continuation marks directly--we must instead deal with a transformed list of transformed continuation marks.
+Our choice to keep the core language small by omitting lists as primitive values has the consequence of complicating our transform somewhat. Because lists are defined in terms of \lc\ values which are themselves touched by the transform and because of the commutativity property that $\mathcal{C}$ must satisfy, we cannot deal with a list of continuation marks directly--we must instead deal with a transformed list of transformed continuation marks, and manipulation of this list within transformed terms must occur at the transformed level.
 
-Additionally, [values are often truncated, etc.]
-
+Additionally, after evaluation, values are ``truncated'' with their leading abstractions applied away. For instance, the transformation of the value \scheme|(lambda (x) x)| to \scheme|(lambda (flag) (lambda (marks) (lambda (x) (lambda (flag) (lambda (marks) x)))))| will yield, following evaluation, \scheme|(lambda (x) (lambda (flag) (lambda (marks) x)))|. For convenience, we define 
 \begin{equation}
 \Cp{\abs{x}{e}}=\abs{x}{\C{e}}
 \end{equation}
-
 and we adjust $\hat{\mathcal{C}}$ so that
 \begin{equation}
 \Ch{p}=\app{\app{\C{p}}{\false}}{\Cp{\nil}}
 \end{equation}
-and recognize that a fully-realized transform must be made aware of this.
+
 
 \newenvironment{schemedefn}[1]{\begin{plaindef}#1}{\end{plaindef}}
 \newenvironment{namedschemedefn}[2]{\begin{plaindef}\label{#1}$#2$}{\end{plaindef}}
@@ -618,36 +613,6 @@ We include corresponding definitions for $\mathcal{C}'$ and $\hat{\mathcal{C}}$.
 \end{schemedisplay}
 \end{schemedefn}
 
-%\subsection{Example: Factorial}
-
-%For convenience, we will augment the base language with direct forms for expressing factorial. Define terms $e$ in \lv\ by
-%\begin{equation}
-%e=\app{e}{e}\,|\,(*\,e\,e)\,|\,\app{\mathrm{pred}}{e}\,|\,\app{\mathrm{zero?}}{e}\,|\,v\,|\,x
-%\end{equation}
-%and values $v$ by
-%\begin{equation}
-%v=\abs{x}{e}\,|\,\mathbb{N}
-%\end{equation}
-%.
-
-%We can express the factorial function by the following
-%\begin{schemedisplay}
-%(Y (lambda (f)
-%     (lambda (n)
-%       (((zero? n)
-%         1)
-%        (* n (f (pred n)))))))
-%\end{schemedisplay}
-
-%and with continuation marks by
-%\begin{schemedisplay}
-%(Y (lambda (f)
-%     (lambda (n)
-%       (((zero? n)
-%         (print (ccm) 1))
-%        (* n (wcm n (f (pred n))))))))
-%\end{schemedisplay}
-
 \subsection{Example}
 
 Consider the \cm\ program \scheme|(wcm 0 ((lambda (x) (wcm x (ccm))) 1))| which reduces as
@@ -747,17 +712,16 @@ Cp[NIL])
 [This example is way too long. Are trivial examples generally uninteresting?]
 
 % TODO
-%explain truncated values
 %explain transforms for values and variables
 %fix references
 %add example program
-%add numbers to core language
 %fix introduction and handling of CPS
 %talk about proof
 %fix conclusion
 
 
 \section{Testing}
+\label{sec-testing}
 
 A pragmatic approach to the discovery of a correct transformation involves consistent feedback and testing to validate candidate transforms. Testing is no substitute for proof, but, as Klein et al. \cite{klein2012run} show, proof is no substitute for testing. Lightweight mechanization is a fruitful middle ground between pencil-and-paper analysis and fully-mechanized formal proof. We use Redex \cite{findler2010redex}, a domain-specific language for exploring language semantics, to provide feedback, thoroughly exercise candidates, and perform exploratory analysis.
 
@@ -926,6 +890,7 @@ Redex provides convenient functions to initiate random testing.
 \scheme'redex-check' generates random terms according to the grammar of the given language (\scheme'lambdacm') and category (\scheme'e') in search of counterexamples to the predicate. It gradually increases the size of the terms it generates, which we found useful in obtaining minimal test cases. Once the transformation withstood 10,000 random tests, we considered it for proof (though no incorrect transform withstood more than 500).
 
 \section{Proof}
+\label{sec-proof}
 
 The theorem we prove guarantees the same property we have strived to preserve: commutativity. Formally, we would like to prove the correctness of $\hat{\mathcal{C}}$.
 
@@ -949,43 +914,92 @@ We then prove that for all contexts $E$, $E[v]\cmrrs v'\implies\C{E[v]}\lvrrs\Cp
 The theorem follows.
 
 \section{Back to JavaScript}
+\label{sec-javascript}
 
 With a correct transformation of continuation marks defined over the \lc, little effort is required to add continuation marks to an eager, higher-order language such as JavaScript.
 
 We add two keywords to manipulate continuation marks: the familiar \texttt{wcm} and \texttt{ccm}. We chose block syntax for \texttt{wcm} to convey that it is a special form, like a conditional, instead of a function-like interface. A lone \texttt{ccm} evaluates to the current continuation marks.
 
-Factorial in this JavaScript extension can be implemented like the following:
+Tail-call elimination is not part of the JavaScript specification which complicates the treatment of the tail-call behavior. We have chosen to perform a simple static analysis which determines if the recursive call is in tail position. We simulate proper tail-call behavior by assigning the static value of the flag to reflect this.
+
+A properly-recursive factorial can be implemented in this JavaScript extension as
 \begin{verbatim}
 var fac = function( n ) {
-    if( n == 0 ) {
-        console.log( ccm );
-        return 1;
-    }
-    else {
-        return wcm { n }
-                   { n * fac( n - 1 ) };
-    }
+  if( n == 0 ) {
+    console.log( ccm );
+    return 1;
+  }
+  else {
+    return wcm { n }
+               { n * fac( n - 1 ) };
+  }
 }
 \end{verbatim}
 
-A transformation of this function desugars these constructs into valid JavaScript.
+A transformation of this function desugars these constructs into vanilla JavaScript, leveraging native arrays for lists of continuation marks.
 \begin{verbatim}
 var fac = function( flag, marks ) {
-    return function( n ) {
-        if( n == 0 ) {
-            console.log( (function( flag, marks ) { return marks; })( false, marks ) );
-            return 1;
-        }
-        else {
-            return (function( flag, marks ) {
-                return (function( mark_value, rest_marks ) {
-                    return n * fac( false, [ mark_value ].concat( rest_marks ) )( n - 1 );
-                })( n, f ? m.slice( 1 ) : m );
-            })( flag, marks );
-        }
+  return function( n ) {
+    if( n == 0 ) {
+      console.log( (function( flag, marks ) { return marks; })( false, marks ) );
+      return 1;
     }
+    else {
+      return (function( flag, marks ) {
+        return (function( mark_value, rest_marks ) {
+          return n * fac( false, [ mark_value ].concat( rest_marks ) )( n - 1 );
+        })( n, flag ? marks.slice( 1 ) : marks );
+      })( flag, marks );
+    }
+  }
 }
-\end{verbatim} 
+\end{verbatim}
+
+As expected, the output of a manual initiation of this function is
+\begin{verbatim}
+> fac( false, [] )( 5 )
+[ 1, 2, 3, 4, 5 ]
+120
+\end{verbatim}
+
+A tail-recursive factorial is expressible in this extension as
+\begin{verbatim}
+var fac = function( n, acc ) {
+  if( n == 0 ) {
+    console.log( ccm );
+    return acc;
+  }
+  else {
+    return wcm { n }
+               { fac( n - 1, n * acc ) };
+  }
+}
+\end{verbatim}
+and transforms to
+\begin{verbatim}
+var fac = function( flag, marks ) {
+  return function( n, acc ) {
+    if( n == 0 ) {
+      console.log( (function( flag, marks ) { return marks; })( false, marks ) );
+      return acc;
+    }
+    else {
+      return (function( flag, marks ) {
+        return (function( mark_value, rest_marks ) {
+          return fac( true, [ mark_value ].concat( rest_marks ) )( n - 1, n * acc );
+        })( n, flag ? marks.slice( 1 ) : marks );
+      })( flag, marks );
+    }
+  }
+}
+\end{verbatim}
+
+The output of a manual initiation of this function is
+\begin{verbatim}
+> fac( false, [] )( 5, 1 )
+[ 1 ]
+120
+\end{verbatim}
 
 \section{Future Work}
 
