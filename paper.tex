@@ -9,7 +9,7 @@
 \title{Instant Continuation Marks--Just Add $\lambda$}
 
 \author{Kimball Germane \and Jay McCarthy}
-\institute{Brigham Young University}
+\institute{Brigham Young University, Provo, Utah}
 
 % Look at the many other papers on c marks to justify them (see mine for
 % example). Talk about how your transformation is a compiler and right
@@ -435,7 +435,7 @@ which is equivalent to
 \app{\app{\C{\evalcm{p}}}{\false}}{\nil}=\evalv{\app{\app{\C{p}}{\false}}{\nil}}
 \end{equation}
 
-\subsection{Some final subtleties}
+\subsection{Some Final Subtleties}
 
 Our choice to keep the core language small by omitting lists as primitive values has the consequence of complicating our transform somewhat. Because lists are defined in terms of \lc\ values which are themselves touched by the transform and because of the commutativity property that $\mathcal{C}$ must satisfy, we cannot deal with a list of continuation marks directly--we must instead deal with a transformed list of transformed continuation marks, and manipulation of this list within transformed terms must occur at the transformed level.
 
@@ -534,7 +534,7 @@ Like other terms, values are modified to receive contextual information. However
 \end{schemedisplay}
 \end{schemedefn}
 
-\subsection{CPS transformation}
+\subsection{CPS Transformation}
 
 The use of continuation-passing style as a compiler's intermediate language enables a host of optimization analyses, such as dead-code elimination, and makes the implementation of otherwise-heavyweight features trivial, such as first-class continuations \cite{appel2007compiling}.
 
