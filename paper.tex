@@ -55,14 +55,14 @@
 \begin{abstract}
 Continuation marks are a programming language feature which generalizes stack inspection. Despite its usefulness, this feature has not been adopted by languages which rely on stack inspection, e.g., for dynamic security checks. One reason for this neglect may be that continuation marks do not yet enjoy a transformation to the plain $\lambda$-calculus which would allow higher-order languages to provide continuation marks at little cost.
 
-We present direct and CPS-like transformations from the call-by-value $\lambda$-calculus augmented with continuation marks to the pure call-by-value $\lambda$-calculus. We discuss how such transformations simplify the construction of compilers which treat continuation marks correctly. We document the aide of Redex, a domain-specific language for exploring language semantics, in the discovery of correct transformations. Finally, we verify the transformations with the proof of a meaning-preservation theorem.
+We present direct and CPS-like transformations from the call-by-value $\lambda$-calculus augmented with continuation marks to the pure call-by-value $\lambda$-calculus. We discuss how such transformations simplify the construction of compilers which treat continuation marks correctly. We document how Redex, a domain-specific language for exploring language semantics, aided the discovery of correct transformations. Finally, we verify the transformations with the proof of a meaning-preservation theorem.
 \end{abstract}
 
 \section{Introduction}
 
 Numerous programming language instruments rely on stack inspection to function. Statistical profilers sample the stack regularly to record active functions, algebraic steppers observe the stack to represent the evaluation context of an expression, and debuggers naturally require consistent access to the stack. In each of these scenarios, the instrument relies on implementation-specific information and must be maintained as the instrumented language undergoes optimizations and ventures across platforms. This makes these instruments brittle and increases the porting cost of the language ecosystem. Each would benefit from a generalized stack-inspection mechanism available within the instrumented language itself. If written in such an enhanced language, each instrument would be more robust, more easily modified, and would port for free.
 
-Continuation marks \cite{clements2006portable} are a programming language feature which generalizes stack inpection. Not only do they dramatically simplify correct instrumentation \cite{clements2001modeling}, they have been used to allow inspection-based dynamic security checks in the presence of tail-call optimization \cite{clements2004tail} and to express aspect-oriented programming in higher-order languagues \cite{tucker2003pointcuts}.
+Continuation marks \cite{clements2006portable} are a programming language feature which generalizes stack inpection. Not only do they dramatically simplify correct instrumentation \cite{clements2001modeling}, they have been used to allow inspection-based dynamic security checks in the presence of tail-call optimization \cite{clements2004tail} and to express aspect-oriented programming in higher-order languagues \cite{tucker2003pointcuts}. [Mention parameters?]
 
 Continuation marks originated in PLT Scheme (now Racket \cite{plt-tr1}). However, in spite of their usefulness, continuation marks have remained absent from programming languages at large. One reason for this is that retrofitting virtual machines to accommodate the level of stack inspection continuation marks must provide is expensive, especially when the virtual machines use the host stack for efficiency.
 
@@ -70,7 +70,7 @@ For example, the ubiquitous JavaScript is an ideal candidate for the addition of
 
 To avoid this roadblock, we instead take a macro-style approach; that is, we enhance the core language with facilities to manipulate continuation marks and desugar the enhanced language back to the core. To make our desugaring transformation portable to other languages, we define it over the \lc, the common core of most higher-order languages. With such a transformation, language semanticists do not need to reconcile the feature with other features in the language (provided they have already done so with $\lambda$) and their compiler writers do not need to worry about complicating their implementations (for the same reason).
 
-We begin by further explaining continuation marks in section \ref{sec-continuation-marks}. We then formalize them via the introduction of a core and enhanced language in section \ref{sec-core-and-extension}. We discuss the necessary properties of a meaningful transformation between these languages. We present two transformations of continuation marks--one direct and one CPS-like--to the call-by-value \lc in section \ref{sec-transformation}. This is followed by a lightweight mechanized model for random testing in section \ref{sec-testing} and a proof of a meaning-preservation theorem in section \ref{sec-proof}. We finally apply it to JavaScript in section \ref{sec-javascript}.
+We begin by further explaining continuation marks in section \ref{sec-continuation-marks}. We then formalize them via the introduction of a core and enhanced language in section \ref{sec-core-and-extension}. We discuss the necessary properties of a meaningful transformation between these languages. We present two transformations of continuation marks--one direct and one CPS-like--to the call-by-value \lc\ in section \ref{sec-transformation}. This is followed by randomized testing using a lightweight mechanized model in section \ref{sec-testing} and a proof of a meaning-preservation theorem in section \ref{sec-proof}. We finally apply it to JavaScript in section \ref{sec-javascript}.
 
 \section{Continuation Marks}
 \label{sec-continuation-marks}
@@ -244,15 +244,9 @@ where $\chi'$ is defined by
 \chi'(\wcm{E}{e},vs) &= \chi'(E,vs)\\
 \chi'(\hole,vs)      &= vs
 \end{align}
-This definition formalizes the intuition given earlier regarding the behavior of \scheme'ccm'. Previously, we saw that the value of a \scheme'ccm' directive was a list; however, lists do not strictly exist as values in the \lc, nor in our extension. Instead of adding lists as primitive values to \cm, we employ Church-encodings to represent them natively \cite{barendregt1984lambda}.
+This definition formalizes the intuition given earlier regarding the behavior of \scheme'ccm'. Previously, we saw that the value of a \scheme'ccm' directive was a list; however, lists do not strictly exist as values in the \lc, nor in our extension. Instead of adding lists as primitive values to \cm, we employ Church encodings to represent them natively \cite{barendregt1984lambda}. To keep things clear, we preserve the intention of Church-encoded terms by representing them with the useful shorthand of fig. \ref{church-encodings}.
 
-%The accumulator-passing style definition of $\chi$ has the effect of ordering the marks from most- to least-recently placed.
-
-Let $\lvrr$ denote the reduction relation for \lv\ and $\lvrrs$ its transitive closure. Similarly, let $\cmrr$ denote the reduction relation for \cm\ and $\cmrrs$ its transitive closure. We will use the more specific notation when $\rightarrow$ is potentially ambiguous.
-
-With the source and target languages formally specified, we can now examine a language transformation in earnest.
-
-\setkeyword{cons snd}
+\setkeyword{cons snd nil}
 \setspecialsymbol{lambda}{$\lambda$}
 \setspecialsymbol{e_0}{$e_0$}
 \setspecialsymbol{e_0p}{$e'_0$}
@@ -304,6 +298,24 @@ With the source and target languages formally specified, we can now examine a la
 \newcommand{\cons}[2]{((\mathbf{cons}\,#1)\,#2)}
 \newcommand{\eval}[1]{\overline{#1}}
 
+\begin{figure}
+\label{church-encodings}
+\begin{align*}
+\true         &= \abs{x}{\abs{y}{x}}\\
+\false        &= \abs{x}{\abs{y}{y}}\\
+\mathbf{cons} &= \abs{a}{\abs{b}{\abs{z}{\app{\app{z}{a}}{b}}}}\\
+\mathbf{snd}  &= \abs{p}{\app{p}{\false}}\\
+\nil          &= \false
+\end{align*}
+\caption{Church encodings of booleans and lists}
+\end{figure}
+
+%The accumulator-passing style definition of $\chi$ has the effect of ordering the marks from most- to least-recently placed.
+
+Let $\lvrr$ denote the reduction relation for \lv\ and $\lvrrs$ its transitive closure. Similarly, let $\cmrr$ denote the reduction relation for \cm\ and $\cmrrs$ its transitive closure. We will use the more specific notation when $\rightarrow$ is potentially ambiguous.
+
+With the source and target languages formally specified, we can now examine a language transformation in earnest.
+
 \section{Transformation}
 \label{sec-transformation}
 
@@ -317,13 +329,7 @@ p & \cmrrs & v\\
 \C{p} & \lvrrs & \C{v}
 \end{array}
 \]
-should hold, or, more concisely,
-\begin{equation}
-\label{meaning-preservation-property}
-p\cmrrs v\implies\C{p}\lvrrs\C{v}
-\end{equation}
-
-If we define 
+should hold. If we define 
 \begin{equation}
 \evalcm{p}=\begin{cases}
 v     &\text{if $p\cmrrs v$}\\
@@ -337,7 +343,10 @@ v     &\text{if $p\lvrrs v$}\\
 \perp &\text{if $p\lvrrs\cdots$}
 \end{cases}
 \end{equation}
-we can state this yet more concisely by $\C{\evalcm{p}}=\evalv{\C{p}}$.
+we can state this more concisely by 
+\begin{equation}
+\C{\evalcm{p}}=\evalv{\C{p}}
+\end{equation}
 
 \subsection{Intuition}
 
@@ -413,13 +422,14 @@ which is the curried form of
 ((lambda (x_1 ... x_n)
            e) e_1 ... e_n)
 \end{schemedisplay}
-We use this fact to construct the transformation and apply $\beta$-rule to simplify terms statically.
+We unfold this characterization of \scheme'let' to guide the construction of $\mathcal{C}$ before simplifying.
+[Drop everything after ``with application.''?]
 
-We use the Church encodings of \scheme'if' and conditionals as well as for list-manipulation operators \scheme{cons}, etc. \cite{barendregt1984lambda}.
+To achieve \scheme'if' and conditionals as well as list primitives \scheme'cons', \scheme'snd', and \scheme'nil', we use the Church encodings of fig. \ref{church-encodings}.
 
 \subsection{Initiation}
 
-Abstracting terms has the effect of suspending evaluation. When an entire program is transformed, all evaluation is suspended, and awaits arguments representing contextual information. At the top level, the context is empty, so we pass the contextual information for the empty context: \scheme'FALSE' indicating evaluation is \emph{not} occurring in \scheme'wcm' tail position and \scheme'NIL', an empty list of marks.
+Abstracting terms has the effect of suspending evaluation. When an entire program is transformed, all evaluation is suspended, and awaits arguments representing contextual information. At the top level, the context is empty, so we pass the contextual information for the empty context: \scheme'FALSE', indicating evaluation is \emph{not} occurring in \scheme'wcm' tail position and \scheme'NIL', an empty list of marks.
 
 We can accommodate this by defining a top-level transform $\hat{\mathcal{C}}$ in terms of $\mathcal{C}$ by
 \begin{equation}
@@ -428,6 +438,7 @@ We can accommodate this by defining a top-level transform $\hat{\mathcal{C}}$ in
 
 and stating our commutativity property as
 \begin{equation}
+\label{commutativity-property}
 \Ch{\evalcm{p}}=\evalv{\Ch{p}}
 \end{equation}
 which is equivalent to
@@ -454,23 +465,12 @@ and we adjust $\hat{\mathcal{C}}$ so that
 
 \subsection{Definition of $\mathcal{C}$}
 
-The definition of $\mathcal{C}$ over the five syntactic forms of \cm\ follows. For reference, figure \ref{church-encodings} contains the particular Church encodings of relevant terms.
+Finally, we present the definition of $\mathcal{C}$ over the five syntactic forms of \cm.
 
-\begin{figure}
-\label{church-encodings}
-\begin{align*}
-\true         &= \abs{x}{\abs{y}{x}}\\
-\false        &= \abs{x}{\abs{y}{y}}\\
-\mathbf{cons} &= \abs{a}{\abs{b}{\abs{z}{\app{\app{z}{a}}{b}}}}\\
-\mathbf{snd}  &= \abs{p}{\app{p}{\false}}\\
-\nil          &= \false
-\end{align*}
-\caption{Church encodings of booleans and lists}
-\end{figure}
-
-The formal transformation of application follows the \scheme'let' version exactly except the definitions of \scheme'rator-value' and \scheme'rand-value' are folded directly in.
 
 \begin{schemedefn}{\scheme|C[(rator-expr rand-expr)]|}
+
+The formal transformation of application follows the \scheme'let' version exactly except the definitions of \scheme'rator-value' and \scheme'rand-value' are folded directly in.
 \begin{schemedisplay}
 (lambda (flags)
   (lambda (marks)
@@ -481,9 +481,9 @@ The formal transformation of application follows the \scheme'let' version exactl
 \end{schemedisplay}
 \end{schemedefn}
 
-The formal transformation of a \scheme'wcm' directive is also extremely similar to the \scheme'let' version. The definition of \scheme'C[cons]' is unfolded and simplified.
-
 \begin{schemedefn}{\scheme|C[(wcm mark-expr body-expr)]|}
+
+The formal transformation of a \scheme'wcm' directive is also extremely similar to the \scheme'let' version. The definition of \scheme'C[cons]' is unfolded and simplified.
 \begin{schemedisplay}
 (lambda (flag)
   (lambda (marks)
@@ -494,18 +494,9 @@ The formal transformation of a \scheme'wcm' directive is also extremely similar 
 \end{schemedisplay}
 \end{schemedefn}
 
-%The definition over \scheme'wcm' expressions is the only one to make explicit use of the value of the flag. Following the evaluation of the mark expression, rule \ref{tail-enforce} is applied, if necessary. The continuity of $\chi$ allows us to construct $\chi(E''[\wcm{v_0}{e_1}])$ from $\chi(E)$ where 
-
-%\begin{equation}
-%E''=\begin{cases}
-%E' &\text{if $E=E'[\wcm{v'}{\hole}]$ for some $E'$ and $v'$}\\
-%E &\text{otherwise}
-%\end{cases}
-%\end{equation}
+\begin{schemedefn}{\scheme|C[(ccm)]|}
 
 The \scheme'let' version of the transformation of a \scheme'ccm' directive remains unchanged.
-
-\begin{schemedefn}{\scheme|C[(ccm)]|}
 \begin{schemedisplay}
 (lambda (flag)
   (lambda (marks)
@@ -513,10 +504,9 @@ The \scheme'let' version of the transformation of a \scheme'ccm' directive remai
 \end{schemedisplay}
 \end{schemedefn}
 
-Like other terms, values are modified to receive contextual information. However, it is ignored.
-% we use this fact a bit
-
 \begin{schemedefn}{\scheme|C[v]|=\scheme|C[(lambda (x) e)]|}
+
+Like other terms, values are modified to receive contextual information. However, being unaffected by context, values discard this information.
 \begin{schemedisplay}
 (lambda (flag)
   (lambda (marks)
@@ -524,9 +514,10 @@ Like other terms, values are modified to receive contextual information. However
 \end{schemedisplay}
 \end{schemedefn}
 
-% Variables have the property that, when substitution occurs, they reconstitute values.
 
 \begin{schemedefn}{\scheme|C[x]|}
+
+Variables have the property that, when substitution occurs, they reconstitute transformed values. That is, in the midst of application in $\mathcal{C}$, terms of the form \scheme|(Cp[(lambda (x) x)] Cp[(lambda (y) y)])| appear, reducing to $\C{x}[x\leftarrow \Cp{\abs{y}{y}}]=\C{x[x\leftarrow\abs{y}{y}}=\C{\abs{y}{y}}$.
 \begin{schemedisplay}
 (lambda (flag)
   (lambda (marks)
@@ -534,11 +525,11 @@ Like other terms, values are modified to receive contextual information. However
 \end{schemedisplay}
 \end{schemedefn}
 
-\subsection{CPS Transformation}
+\subsection{Definition of $\mathcal{C}$ in CPS}
 
-The use of continuation-passing style as a compiler's intermediate language enables a host of optimization analyses, such as dead-code elimination, and makes the implementation of otherwise-heavyweight features trivial, such as first-class continuations \cite{appel2007compiling}.
+Many compilers transform source to continuation-passing style (CPS) in the compilation process. The use of CPS as an intermediate language enables a host of optimization analyses and makes the implementation of otherwise-heavyweight features trivial, such as first-class continuations \cite{appel2007compiling}.
 
-We present a continuation mark transformation integrated in continuation-passing style.
+We present a continuation mark transformation integrated in CPS.
 
 \begin{schemedefn}{\scheme|Ccps[(rator-expr rand-expr)]|}
 \begin{schemedisplay}
@@ -712,11 +703,8 @@ Cp[NIL])
 [This example is way too long. Are trivial examples generally uninteresting?]
 
 % TODO
-%explain transforms for values and variables
 %fix references
 %add example program
-%fix introduction and handling of CPS
-%talk about proof
 %fix conclusion
 
 
@@ -725,159 +713,20 @@ Cp[NIL])
 
 A pragmatic approach to the discovery of a correct transformation involves consistent feedback and testing to validate candidate transforms. Testing is no substitute for proof, but, as Klein et al. \cite{klein2012run} show, proof is no substitute for testing. Lightweight mechanization is a fruitful middle ground between pencil-and-paper analysis and fully-mechanized formal proof. We use Redex \cite{findler2010redex}, a domain-specific language for exploring language semantics, to provide feedback, thoroughly exercise candidates, and perform exploratory analysis.
 
-The correctness of the transform lies in the property that it commutes. In order to test for this property, we must construct evaluation models for the source language \cm\ and the target language \lv. Since \cm\ is an extension of \lv, many of its forms and semantics are inherited. Redex allows us to exploit this fact by defining a model for \lv\ first and then extending that model with the enhancements of \cm.
+The correctness of the transform lies in the property that it commutes with evaluation. In order to test for this property, we must construct evaluation models for the source language \cm\ and the target language \lv. Since \cm\ is an extension of \lv, many of its forms and semantics are inherited. Redex allows us to exploit this fact by defining a model for \lv\ first and then extending that model with the enhancements of \cm.
 
-\setkeyword{define-language define-extended-language define-metafunction reduction-relation extend-reduction-relation define-metafunction/extension in-hole hole variable-not-otherwise-mentioned}
-\setkeyword{wcm ccm}
-
-\setspecialsymbol{lambda}{$\lambda$}
-\setspecialsymbol{->}{$\to$}
-\setspecialsymbol{-->}{$\rightarrow$}
-\setspecialsymbol{betav}{$\beta$v}
-\setconstant{error}
-\setkeyword{chi chi_p number apply-reduction-relation*}
-
-\setspecialsymbol{lambdav}{$\lambda$v}
-\setspecialsymbol{lambdav-rr}{$\lambda$v-rr}
-\setspecialsymbol{lambdav-subst}{$\lambda$v-subst}
-
-We first define the form of terms $e$, values $v$, and evaluation contexts $E$.
-
-\begin{schemedisplay}
-(define-language lambdav
-  (e (e e) x v error)
-  (x variable-not-otherwise-mentioned)
-  (v (lambda (x) e) number)
-  (E (E e) (v E) hole))
-\end{schemedisplay}
-
-We then define the reduction relation for \lv. It consists of five rules. The first rule captures the sole semantic rule of \lv; the remaining handle error conditions.
-
-\begin{schemedisplay}
-(define lambdav-rr
-  (reduction-relation lambdav
-   (--> (in-hole E ((lambda (x) e) v))
-        (in-hole E (lambdav-subst x v e))
-        "betav")
-   (--> (in-hole E (number_1 v))
-        (in-hole E error)
-        "error: number in operator position")
-   (--> (in-hole E x)
-        (in-hole E error)
-        "error: unbound identifier")
-   (--> (in-hole E (error e))
-        (in-hole E error)
-        "error in operator")
-   (--> (in-hole E (v error))
-        (in-hole E error)
-        "error in operand")))
-\end{schemedisplay}
-
-The reduction relation requires one metafunction to perform substitution. We omit any capture-avoidance facilities to keep the model simple and argue that it is unnecessary as we generate fresh variables in the transform.
-
-\begin{schemedisplay}
-(define-metafunction lambdav
-  lambdav-subst : x v e -> e
-  ;; 1. substitute in application
-  [(lambdav-subst x_1 v_1 (e_1 e_2))
-   ((lambdav-subst x_1 v_1 e_1) (lambdav-subst x_1 v_1 e_2))]
-  ;; 2a. substitute in variable (same)
-  [(lambdav-subst x_1 v_1 x_1)
-   v_1]
-  ;; 2b. substitute in variable (different)
-  [(lambdav-subst x_1 v_1 x_2)
-   x_2]
-  ;; 3a. substitute in abstraction (bound)
-  [(lambdav-subst x_1 v_1 (lambda (x_1) e_1))
-   (lambda (x_1) e_1)]
-  ;; 3b. substitute in abstraction (free)
-  [(lambdav-subst x_1 v_1 (lambda (x_2) e_1))
-   (lambda (x_2) (lambdav-subst x_1 v_1 e_1))]
-  ;; 4. substitute in number
-  [(lambdav-subst x_1 v_1 number_1)
-   number_1]
-  ;; 5. substitute in error
-  [(lambdav-subst x_1 v_1 error)
-   error])
-\end{schemedisplay}
-
-\setspecialsymbol{lambdacm}{$\lambda$cm}
-\setspecialsymbol{lambdacm-rr}{$\lambda$cm-rr}
-\setspecialsymbol{lambdacm-subst}{$\lambda$cm-subst}
-
-We now define the forms of terms $e$, and evaluation contexts $E$ and $F$, inheriting definitions from \lv\ where appropriate.
-
-\begin{schemedisplay}
-(define-extended-language lambdacm lambdav
-  (e .... (wcm e e) (ccm))
-  (E (wcm v F) F)
-  (F (E e) (v E) (wcm E e) hole))
-\end{schemedisplay}
-
-We extend the reduction relation of \lv. We begin by redefining application in terms of a substitution function aware of \cm. The following three definitions capture the remaining semantic rules of \cm. The remaining definitions handle error cases specific to \cm.
-
-\begin{schemedisplay}
-(define lambdacm-rr
-  (extend-reduction-relation lambdav-rr lambdacm
-   (--> (in-hole E ((lambda (x) e) v))
-        (in-hole E (lambdacm-subst x v e))
-        "betav")
-   (--> (in-hole E (wcm v_1 (wcm v_2 e)))
-        (in-hole E (wcm v_2 e))
-        "wcm-collapse")
-   (--> (in-hole E (wcm v_1 v_2))
-        (in-hole E v_2)
-        "wcm")
-   (--> (in-hole E (ccm))
-        (in-hole E (chi E))
-        "chi")
-   (--> (in-hole E (wcm error e))
-        (in-hole E error)
-        "error in wcm mark expression")
-   (--> (in-hole E (wcm v error))
-        (in-hole E error)
-        "error in wcm body expression")))
-\end{schemedisplay}
-
-We extend the definition of substitution to accommodate the additional forms introduced by \cm.
-
-\begin{schemedisplay}
-(define-metafunction/extension lambdav-subst lambdacm
-  lambdacm-subst : x v e -> e
-  ;; 1. substitute in wcm form
-  [(lambdacm-subst x_1 v_1 (wcm e_1 e_2))
-   (wcm (lambdacm-subst x_1 v_1 e_1) (lambdacm-subst x_1 v_1 e_2))]
-  ;; 2. substitute in ccm form
-  [(lambdacm-subst x_1 v_1 (ccm))
-   (ccm)])
-\end{schemedisplay}
-
-The definition of \scheme'chi' and \scheme'chi_p' mirror their definitions exactly.
-
-\begin{schemedisplay}
-(define-metafunction lambdacm
-  chi : E -> v
-  [(chi E) (chi_p E (lambda (x) (lambda (y) y)))])
-
-(define-metafunction lambdacm
-  chi_p : E v -> v
-  [(chi_p hole v_ms)      v_ms]
-  [(chi_p (E e) v_ms)     (chi_p E v_ms)]
-  [(chi_p (v E) v_ms)     (chi_p E v_ms)]
-  [(chi_p (wcm E e) v_ms) (chi_p E v_ms)]
-  [(chi_p (wcm v E) v_ms) (chi_p E (lambda (p) ((p v) v_ms)))])
-\end{schemedisplay}
-
-We are now prepared to test various semantic properties of these two languages. Of course, we are particularly interested in testing the commutativity of our transformation.
+After constructing the models, we are prepared to test various semantic properties of these two languages. Of course, we are particularly interested in testing the commutativity of our transformation.
 
 %We observe that a mark-passing approach, much like a continuation-passing approach, abstracts terms and so requires a transformed term to be primed with an argument to initiate reduction. For this reason, we accompany each transform with an initialization function which primes a term appropriately for the corresponding transform.
 
-\setkeyword{meaning-preserved? alpha-eq? transform eval init redex-check}
+\setspecialsymbol{lambdav}{$\lambda$v}
+\setspecialsymbol{lambdacm}{$\lambda$cm}
+\setkeyword{meaning-preserved? alpha-eq? eval c-hat redex-check apply-reduction-relation*}
 
-We can test that the property described by equation \ref{meaning-preservation-property} holds for a given program \scheme'p' with 
+We can test that the property described by equation \ref{commutativity-property} holds for a given program \scheme'p' with 
 \begin{schemedisplay}
 (define (meaning-preserved? p)
-  (alpha-eq? (eval lambdav (transform (eval lambdacm p))) (eval lambdav (transform p)))
+  (alpha-eq? (eval lambdav (c-hat (eval lambdacm p))) (eval lambdav (c-hat p)))
 \end{schemedisplay}
 where \scheme'alpha-eq?' determines $\alpha$-equivalence between two \lc\ terms and \scheme'eval' is an alias for the Redex native \scheme'apply-reduction-relation*'.
 
@@ -887,12 +736,18 @@ Redex provides convenient functions to initiate random testing.
 (redex-check lambdacm e (meaning-preserved? e))
 \end{schemedisplay}
 
-\scheme'redex-check' generates random terms according to the grammar of the given language (\scheme'lambdacm') and category (\scheme'e') in search of counterexamples to the predicate. It gradually increases the size of the terms it generates, which we found useful in obtaining minimal test cases. Once the transformation withstood 10,000 random tests, we considered it for proof (though no incorrect transform withstood more than 500).
+\scheme'redex-check' generates random terms according to the grammar of the given language (\scheme'lambdacm') and category (\scheme'e') in search of counterexamples to the predicate. It gradually increases the size of the terms it generates, which we found useful in obtaining minimal test cases. We subjected both the direct and CPS transformation to random testing and each eventually withstood 10,000 random tests. Interestingly, no incorrect transformation withstood more than 500 random tests before failing.
 
 \section{Proof}
 \label{sec-proof}
 
-The theorem we prove guarantees the same property we have strived to preserve: commutativity. Formally, we would like to prove the correctness of $\hat{\mathcal{C}}$.
+With a reasonable intuition and definitions hardened by random testing, we prove correctness.
+
+We have discovered a truly marvelous proof of this, which this paper is too short to contain.
+
+We offer a sketch of the proof here.
+
+We begin by expressing the commutativity property we have sought to preserve as a theorem:
 
 %\spnewtheorem*{maintheoremeu}{Correctness of $\hat{\mathcal{C}}$}{a}{x}
 \begin{theorem}
@@ -920,7 +775,7 @@ With a correct transformation of continuation marks defined over the \lc, little
 
 We add two keywords to manipulate continuation marks: the familiar \texttt{wcm} and \texttt{ccm}. We chose block syntax for \texttt{wcm} to convey that it is a special form, like a conditional, instead of a function-like interface. A lone \texttt{ccm} evaluates to the current continuation marks.
 
-Tail-call elimination is not part of the JavaScript specification which complicates the treatment of the tail-call behavior. We have chosen to perform a simple static analysis which determines if the recursive call is in tail position. We simulate proper tail-call behavior by assigning the static value of the flag to reflect this.
+Tail-call elimination is not part of the JavaScript specification which complicates the treatment of the tail-call behavior. We have chosen to perform a simple static analysis which determines if the recursive call is in tail position. We simulate proper tail-call behavior by statically assigning the value of the flag to reflect this.
 
 A properly-recursive factorial can be implemented in this JavaScript extension as
 \begin{verbatim}
@@ -1000,6 +855,10 @@ The output of a manual initiation of this function is
 [ 1 ]
 120
 \end{verbatim}
+
+\section{Related Work}
+
+Monads, introduced by Moggi \cite{moggi1989computational}, are another way to model semantics. Their appeal is significant: they allow one to implement a particular model of computation with with a pure computational logic, such as the \lc. Ager et al. \cite{ager2003functional} implemented a stack-inspection monad in terms of a lifted state monad, but the size of the continuation must be managed by hand within.
 
 \section{Future Work}
 
