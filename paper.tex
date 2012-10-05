@@ -920,6 +920,59 @@ The output of a manual initiation of this function is
 
 Monads, introduced by Moggi \cite{moggi1989computational}, are another way to model semantics. Their appeal is significant: they allow one to implement a particular model of computation with with a pure computational logic, such as the \lc. Ager et al. \cite{ager2003functional} implemented a stack-inspection monad in terms of a lifted state monad, but the size of the continuation must be managed by hand within.
 
+Expressing continuation marks in a monadic way is simple enough. In Haskell,
+\begin{verbatim}
+module CM where
+import Control.Monad
+
+data CM m a = CM ((Bool,[m]) -> a)
+
+instance Monad (CM m) where
+  return x = CM (\_ -> x)
+  (CM m) >>= f = CM (\(flag,vs) -> let (CM m') = f (m (False,vs)) in m' (flag,vs))
+
+wcm :: m -> CM m a -> CM m a
+wcm v (CM m) = CM (\(f,vs) -> m (True, v:(if f then (tail vs) else vs)))
+
+ccm :: CM m [m]
+ccm = CM (\(_,vs) -> vs)
+
+runCM :: CM m a -> a
+runCM (CM m) = m (False,[])
+\end{verbatim}
+
+\begin{verbatim}
+module Main where
+import CM
+
+fac :: Int -> CM Int (Int,[Int])
+fac 0 = do
+  vs <- ccm;
+  return (1,vs)
+
+fac n = do
+  (acc,vs) <- wcm n (fac (n - 1));
+  return (n * acc,vs)
+
+fac_tr :: Int -> Int -> CM Int (Int,[Int])
+fac_tr 0 acc = do
+  vs <- ccm;
+  return (acc,vs)
+
+fac_tr n acc = wcm n (fac_tr (n - 1) (n * acc))
+
+main = do
+  print $ runCM (fac 5);
+  print $ runCM (fac_tr 5 1)
+\end{verbatim}
+
+\begin{verbatim}
+(120,[1,2,3,4,5])
+(120,[1])
+\end{verbatim}
+[Say more with less.]
+
+
 \section{Future Work}
 
 Although we used some level of mechanization in the proof of the theorem, a formal proof assistant, such as Coq \cite{barras1997coq}, would increase confidence out of the gate that the transformation was correct.
