@@ -55,7 +55,7 @@
 \begin{abstract}
 Continuation marks are a programming language feature which generalizes stack inspection. Despite its usefulness, this feature has not been adopted by languages which rely on stack inspection, e.g., for dynamic security checks. One reason for this neglect may be that continuation marks do not yet enjoy a transformation to the plain $\lambda$-calculus which would allow higher-order languages to provide continuation marks at little cost.
 
-We present direct and CPS-like transformations from the call-by-value $\lambda$-calculus augmented with continuation marks to the pure call-by-value $\lambda$-calculus. We discuss how such transformations simplify the construction of compilers which treat continuation marks correctly. We document how Redex, a domain-specific language for exploring language semantics, aided the discovery of correct transformations. Finally, we verify the transformations with the proof of a meaning-preservation theorem.
+We present direct and CPS-like transformations from the call-by-value $\lambda$-calculus augmented with continuation marks to the pure call-by-value $\lambda$-calculus. We discuss how such transformations simplify the construction of compilers which treat continuation marks correctly. We document how Redex, a domain-specific language for exploring language semantics, aided the discovery of correct transformations. We verify the transformations with the proof of a meaning-preservation theorem. Finally, we apply the transformation to JavaScript.
 \end{abstract}
 
 \section{Introduction}
@@ -835,7 +835,7 @@ With a correct transformation of continuation marks defined over the \lc, little
 
 We add two keywords to manipulate continuation marks: the familiar \texttt{wcm} and \texttt{ccm}. We chose block syntax for \texttt{wcm} to convey that it is a special form, like a conditional, instead of a function-like interface. A lone \texttt{ccm} evaluates to the current continuation marks.
 
-Tail-call elimination is not part of the JavaScript specification which complicates the treatment of the tail-call behavior. We have chosen to perform a simple static analysis which determines if the recursive call is in tail position. We simulate proper tail-call behavior by statically assigning the value of the flag to reflect this.
+Tail-call elimination is not part of the JavaScript specification which complicates the treatment of the tail-call behavior. We simulate proper tail-call behavior by using the flag to encode whether a function call is in tail position.
 
 A properly-recursive factorial can be implemented in this JavaScript extension as
 \begin{verbatim}
@@ -851,7 +851,7 @@ var fac = function( n ) {
 }
 \end{verbatim}
 
-A transformation of this function desugars these constructs into vanilla JavaScript, leveraging native arrays for lists of continuation marks.
+A direct-style transformation of this function desugars these constructs into vanilla JavaScript, leveraging native arrays for lists of continuation marks.
 \begin{verbatim}
 var fac = function( flag, marks ) {
   return function( n ) {
@@ -916,15 +916,14 @@ The output of a manual initiation of this function is
 120
 \end{verbatim}
 
+In this example, the API to compute factorials has changed, but the change is localized. With top-level control of a program, we can transform the relevant part of the system, leaving the rest the same. This preserves interoperability with foreign functions, e.g., third-party JavaScript libraries.
+ 
 \section{Related Work}
 
-Monads, introduced by Moggi \cite{moggi1989computational}, are another way to model semantics. Their appeal is significant: they allow one to implement a particular model of computation with with a pure computational logic, such as the \lc. Ager et al. \cite{ager2003functional} implemented a stack-inspection monad in terms of a lifted state monad, but the size of the continuation must be managed by hand within.
+Monads, introduced by Moggi \cite{moggi1989computational}, are another way to model semantics. Their appeal is significant: they allow one to implement a particular model of computation with with a pure computational logic, such as the \lc.
 
 Expressing continuation marks in a monadic way is simple enough. In Haskell,
 \begin{verbatim}
-module CM where
-import Control.Monad
-
 data CM m a = CM ((Bool,[m]) -> a)
 
 instance Monad (CM m) where
@@ -940,38 +939,11 @@ ccm = CM (\(_,vs) -> vs)
 runCM :: CM m a -> a
 runCM (CM m) = m (False,[])
 \end{verbatim}
-
+is one way, using our approach. The factorial functions leveraging this implementation exhibit the correct continuation mark behavior but this is \emph{not} a monad. Specifically, the right identity law
 \begin{verbatim}
-module Main where
-import CM
-
-fac :: Int -> CM Int (Int,[Int])
-fac 0 = do
-  vs <- ccm;
-  return (1,vs)
-
-fac n = do
-  (acc,vs) <- wcm n (fac (n - 1));
-  return (n * acc,vs)
-
-fac_tr :: Int -> Int -> CM Int (Int,[Int])
-fac_tr 0 acc = do
-  vs <- ccm;
-  return (acc,vs)
-
-fac_tr n acc = wcm n (fac_tr (n - 1) (n * acc))
-
-main = do
-  print $ runCM (fac 5);
-  print $ runCM (fac_tr 5 1)
+m >>= return = m
 \end{verbatim}
-
-\begin{verbatim}
-(120,[1,2,3,4,5])
-(120,[1])
-\end{verbatim}
-[Say more with less.]
-
+does not hold since \texttt{CM} conceptually adds a stack frame in bind (\texttt{>>=}). Ager et al. \cite{ager2003functional} implemented a similar stack-inspection monad in terms of a lifted state monad, but resorted to manual management of the stack frames.
 
 \section{Future Work}
 
