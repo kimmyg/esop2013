@@ -812,14 +812,14 @@ For all programs $p\in\lambda_{cm}$, $\Ch{\mathrm{eval}_{cm}(p)}=\mathrm{eval}_{
 
 We do this by overloading $\mathcal{C}$ to accommodate contexts which allows us to formally relate $E[e]$ and $\C{E[e]}$.
 
-\begin{schemedefn}{\scheme|hole|}
+\begin{schemedefn}{\scheme|Ccps[hole]|}
 \begin{schemedisplay}
 (lambda (value)
   value)
 \end{schemedisplay}
 \end{schemedefn}
 
-\begin{schemedefn}{\scheme|E[(hole rand-value)]|}
+\begin{schemedefn}{\scheme|Ccps[E[(hole rand-value)]]|}
 \begin{schemedisplay}
 (lambda (rator-value)
   (((Ccps[rand-expr]
@@ -830,14 +830,14 @@ We do this by overloading $\mathcal{C}$ to accommodate contexts which allows us 
 \end{schemedisplay}
 \end{schemedefn}
 
-\begin{schemedefn}{\scheme|E[(v_0 hole)]|}
+\begin{schemedefn}{\scheme|Ccps[E[(v_0 hole)]]|}
 \begin{schemedisplay}
 (lambda (rand-value)
   ((((v_0 rand-value) Ccps[E]) xiE) Cpcps[chiE]))
 \end{schemedisplay}
 \end{schemedefn}
 
-\begin{schemedefn}{\scheme|E[(wcm hole body-expr)]|}
+\begin{schemedefn}{\scheme|Ccps[E[(wcm hole body-expr)]]|}
 \begin{schemedisplay}
 (lambda (mark-value) 
   ((lambda (rest-marks) 
@@ -846,7 +846,7 @@ We do this by overloading $\mathcal{C}$ to accommodate contexts which allows us 
 \end{schemedisplay}
 \end{schemedefn}
 
-\begin{schemedefn}{\scheme|E[(wcm v_0 hole)]|}
+\begin{schemedefn}{\scheme|Ccps[E[(wcm v_0 hole)]]|}
 \begin{schemedisplay}
 Ccps[E]
 \end{schemedisplay}
@@ -854,7 +854,7 @@ Ccps[E]
 
 \begin{schemedefn}{\scheme|Ccps[E[e]]|}
 \begin{schemedisplay}
-(((Ccps[e] C[E]) xiE) Cpcps[E])
+(((Ccps[e] Ccps[E]) xiE) Cpcps[E])
 \end{schemedisplay}
 \end{schemedefn}
 
