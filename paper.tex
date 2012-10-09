@@ -607,7 +607,7 @@ We include corresponding definitions for $\mathcal{C}'$ and $\hat{\mathcal{C}}$.
 
 \subsection{Example}
 
-Consider the \cm\ program \scheme|(wcm 0 ((lambda (x) (wcm x (ccm))) 1))| which reduces as
+To better illustrate what the transformation does, we step through the reduction of a program which exhibits its more interesting aspects. One \cm\ program suited to this purpose is \scheme|(wcm 0 ((lambda (x) (wcm x (ccm))) 1))|. It reduces according to \cm\ semantics as
 \begin{schemedisplay}
 (wcm 0 ((lambda (x) (wcm x (ccm))) 1))
 (wcm 0 (wcm 1 (ccm)))
@@ -615,7 +615,8 @@ Consider the \cm\ program \scheme|(wcm 0 ((lambda (x) (wcm x (ccm))) 1))| which 
 (wcm 1 (lambda (z) ((z 1) (lambda (x) (lambda (y) y)))))
 (lambda (z) ((z 1) (lambda (x) (lambda (y) y))))
 \end{schemedisplay}
-and transforms as
+
+Now consider the transformation of the same program. We apply the transformation just-in-time as we reduce which has the effect of reducing term size and promoting clarity.
 \begin{schemedisplay}
 Ch[(wcm 0 ((lambda (x) (wcm x (ccm))) 1))]
 
