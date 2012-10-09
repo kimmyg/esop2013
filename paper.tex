@@ -280,6 +280,7 @@ This definition formalizes the intuition given earlier regarding the behavior of
 \setspecialsymbol{e_0p_x_v_1}{$e'_0[x\leftarrow v_1]$}
 \setspecialsymbol{Cz}{$\C{z}$}
 \setspecialsymbol{CE}{$\C{E}$}
+\setspecialsymbol{XI}{$\xi$}
 \setspecialsymbol{xiE}{$\xi(E)$}
 \setspecialsymbol{chiE}{$\chi(E)$}
 \setspecialsymbol{CchiE}{$\C{\chi(E)}$}
@@ -488,7 +489,7 @@ The formal transformation of a \scheme'wcm' directive is also extremely similar 
 (lambda (flag)
   (lambda (marks)
     ((C[body-expr] TRUE)
-     (((lambda (mark-value) (lambda (rest-marks) Cp[((CONS mark-value) rest-marks)])))
+     (((lambda (mark-value) (lambda (rest-marks) Cp[((CONS mark-value) rest-marks)]))
        ((C[mark-expr] FALSE) marks))
       ((flag Ch[(SND marks)]) marks)))))
 \end{schemedisplay}
@@ -556,8 +557,8 @@ We present a continuation mark transformation integrated in CPS.
       (((Ccps[mark-expr]
           (lambda (mark-value) 
             ((lambda (rest-marks) 
-               (((Ccps[body-expr] kont) TRUE) Cp[((CONS mark-value) rest-marks)])))
-             ((flag Ch_cps[(SND marks)]) marks))))
+               (((Ccps[body-expr] kont) TRUE) Cpcps[((CONS mark-value) rest-marks)]))
+             ((flag Chcps[(SND marks)]) marks))))
         FALSE)
        marks))))
 \end{schemedisplay}
@@ -762,12 +763,6 @@ Cp[((CONS 1) NIL)]
 
 [This example is way too long. Are trivial examples generally uninteresting?]
 
-% TODO
-%fix references
-%add example program
-%fix conclusion
-
-
 \section{Testing}
 \label{sec-testing}
 
@@ -801,7 +796,7 @@ Redex provides convenient functions to initiate random testing.
 \section{Proof}
 \label{sec-proof}
 
-With a reasonable intuition and definitions hardened by random testing, we prove correctness.
+With a reasonable intuition and definitions hardened by random testing, we prove correctness of the continuation-passing variant of the transform $\mathcal{C}_{\mathrm{cps}}$.
 
 We have discovered a truly marvelous proof of this, which this paper is too short to contain.
 
@@ -815,6 +810,54 @@ For all programs $p\in\lambda_{cm}$, $\Ch{\mathrm{eval}_{cm}(p)}=\mathrm{eval}_{
 \end{theorem}
 
 We do this by overloading $\mathcal{C}$ to accommodate contexts which allows us to formally relate $E[e]$ and $\C{E[e]}$.
+
+\begin{schemedefn}{\scheme|hole|}
+\begin{schemedisplay}
+(lambda (value)
+  value)
+\end{schemedisplay}
+\end{schemedefn}
+
+\begin{schemedefn}{\scheme|E[(hole rand-value)]|}
+\begin{schemedisplay}
+(lambda (rator-value)
+  (((Ccps[rand-expr]
+     (lambda (rand-value)
+       ((((rator-value rand-value) Ccps[E]) xiE) Cpcps[chiE])))
+    FALSE)
+  Cpcps[chiE]))
+\end{schemedisplay}
+\end{schemedefn}
+
+\begin{schemedefn}{\scheme|E[(v_0 hole)]|}
+\begin{schemedisplay}
+(lambda (rand-value)
+  ((((v_0 rand-value) Ccps[E]) xiE) Cpcps[chiE]))
+\end{schemedisplay}
+\end{schemedefn}
+
+\begin{schemedefn}{\scheme|E[(wcm hole body-expr)]|}
+\begin{schemedisplay}
+(lambda (mark-value) 
+  ((lambda (rest-marks) 
+      (((Ccps[body-expr] Ccps[E]) TRUE) Cpcps[((CONS mark-value) rest-marks)]))
+    ((xiE Chcps[(SND chiE)]) Cpcps[chiE])))
+\end{schemedisplay}
+\end{schemedefn}
+
+\begin{schemedefn}{\scheme|E[(wcm v_0 hole)]|}
+\begin{schemedisplay}
+Ccps[E]
+\end{schemedisplay}
+\end{schemedefn}
+
+\begin{schemedefn}{\scheme|Ccps[E[e]]|}
+\begin{schemedisplay}
+(((Ccps[e] C[E]) xiE) Cpcps[E])
+\end{schemedisplay}
+\end{schemedefn}
+
+From this definition, it is apparent that \scheme|Chcps[p]|=\scheme|(((Ccps[p] Ccps[hole]) XI(hole)) Cpcps[hole])|.
 
 This in turn allows us to express the following lemmas.
 
