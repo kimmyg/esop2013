@@ -146,7 +146,7 @@ The evaluation of the factorial of 2, here expressed by \scheme|(fac 2 1)|, proc
 (wcm 2 (if (zero? 1) ... (wcm 1 (fac (- 1 1) (* 1 2)))))
 (wcm 2 (wcm 1 (fac (- 1 1) (* 1 2))))
 \end{schemedisplay}
-At this point, there is one \scheme'wcm' directive directly nested within another. Behaviorally, the outer one is collapsed \emph{before} evaluation of the inner body proceeds. In effect, it is overwritten. Following this, evaluation continues as
+At this point, there is one \scheme'wcm' directive directly nested within another. Behaviorally, the outer one is collapsed \emph{before} evaluation of the inner body proceeds. In essence, it is overwritten. Following this, evaluation continues as
 \begin{schemedisplay}
 (wcm 1 (fac (- 1 1) (* 1 2)))
 (wcm 1 (fac 0 (* 1 2)))
@@ -430,7 +430,7 @@ To achieve \scheme'if' and conditionals as well as list primitives \scheme'cons'
 
 \subsection{Initiation}
 
-Abstracting terms has the effect of suspending evaluation. When an entire program is transformed, all evaluation is suspended, and awaits arguments representing contextual information. At the top level, the context is empty, so we pass the contextual information for the empty context: \scheme'FALSE', indicating evaluation is \emph{not} occurring in \scheme'wcm' tail position and \scheme'NIL', an empty list of marks.
+In our call-by-value language, abstracting terms has the effect of suspending evaluation. When an entire program is transformed, all evaluation is suspended, awaiting arguments representing contextual information. At the top level, the context is empty, so we pass the contextual information for the empty context: \scheme'FALSE', indicating evaluation is \emph{not} occurring in \scheme'wcm' tail position and \scheme'NIL', an empty list of marks.
 
 We can accommodate this by defining a top-level transform $\hat{\mathcal{C}}$ in terms of $\mathcal{C}$ by
 \begin{equation}
@@ -484,12 +484,12 @@ The formal transformation of application follows the \scheme'let' version exactl
 
 \begin{schemedefn}{\scheme|C[(wcm mark-expr body-expr)]|}
 
-The formal transformation of a \scheme'wcm' directive is also extremely similar to the \scheme'let' version. The definition of \scheme'C[cons]' is unfolded and simplified.
+The formal transformation of a \scheme'wcm' directive is also extremely similar to the \scheme'let' version. The Church-encoded conditional eagerly evaluates both branches, but this still achieves correct behavior.
 \begin{schemedisplay}
 (lambda (flag)
   (lambda (marks)
     ((C[body-expr] TRUE)
-     (((lambda (mark-value) (lambda (rest-marks) Cp[((CONS mark-value) rest-marks)]))
+     (((lambda (mark-value) (lambda (rest-marks) Ch[((CONS mark-value) rest-marks)]))
        ((C[mark-expr] FALSE) marks))
       ((flag Ch[(SND marks)]) marks)))))
 \end{schemedisplay}
@@ -557,7 +557,7 @@ We present a continuation mark transformation integrated in CPS.
       (((Ccps[mark-expr]
           (lambda (mark-value) 
             ((lambda (rest-marks) 
-               (((Ccps[body-expr] kont) TRUE) Cpcps[((CONS mark-value) rest-marks)]))
+               (((Ccps[body-expr] kont) TRUE) Chcps[((CONS mark-value) rest-marks)]))
              ((flag Chcps[(SND marks)]) marks))))
         FALSE)
        marks))))
@@ -616,7 +616,7 @@ To better illustrate what the transformation does, we step through the reduction
 (lambda (z) ((z 1) (lambda (x) (lambda (y) y))))
 \end{schemedisplay}
 
-Now consider the transformation of the same program. We apply the transformation just-in-time as we reduce which has the effect of reducing term size and promoting clarity.
+Now consider the reduction of the same program transformed. We apply the transformation just-in-time as we reduce to reduce term size and promote clarity.
 \begin{schemedisplay}
 Ch[(wcm 0 ((lambda (x) (wcm x (ccm))) 1))]
 
@@ -807,10 +807,19 @@ We begin by expressing the commutativity property we have sought to preserve as 
 
 %\spnewtheorem*{maintheoremeu}{Correctness of $\hat{\mathcal{C}}$}{a}{x}
 \begin{theorem}
-For all programs $p\in\lambda_{cm}$, $\Ch{\mathrm{eval}_{cm}(p)}=\mathrm{eval}_{v}(\Ch{p})$.
+For all programs $p\in\lambda_{cm}$, $\Chcps{\mathrm{eval}_{cm}(p)}=\mathrm{eval}_{v}(\Chcps{p})$.
 \end{theorem}
 
-We do this by overloading $\mathcal{C}$ to accommodate contexts which allows us to formally relate $E[e]$ and $\C{E[e]}$.
+We do this by overloading $\mathcal{C}_{\mathrm{cps}}$ to accommodate contexts which allows us to formally relate $E[e]$ and $\Ccps{E[e]}$. We first define
+\begin{plaindef}
+\[
+\xi(E)=\begin{cases}
+\mathbf{true} &\text{if $E=E'[\wcm{v'}{\hole}]$ for some $E'$ and $v'$}\\
+\mathbf{false} &\text{otherwise}
+\end{cases}
+\]
+\end{plaindef}
+to denote the \scheme'flags' argument and assume that the \scheme'marks' argument is \scheme|Cpcps[chiE]|. We can now define $\mathcal{C}_{\mathrm{cps}}$ over contexts:
 
 \begin{schemedefn}{\scheme|Ccps[hole]|}
 \begin{schemedisplay}
@@ -841,7 +850,7 @@ We do this by overloading $\mathcal{C}$ to accommodate contexts which allows us 
 \begin{schemedisplay}
 (lambda (mark-value) 
   ((lambda (rest-marks) 
-      (((Ccps[body-expr] Ccps[E]) TRUE) Cpcps[((CONS mark-value) rest-marks)]))
+      (((Ccps[body-expr] Ccps[E]) TRUE) Chcps[((CONS mark-value) rest-marks)]))
     ((xiE Chcps[(SND chiE)]) Cpcps[chiE])))
 \end{schemedisplay}
 \end{schemedefn}
@@ -852,13 +861,15 @@ Ccps[E]
 \end{schemedisplay}
 \end{schemedefn}
 
+This allows us to define $\mathcal{C}_{\mathrm{cps}}$ over a context-expression pair with mildly unorthodox notation.
+
 \begin{schemedefn}{\scheme|Ccps[E[e]]|}
 \begin{schemedisplay}
 (((Ccps[e] Ccps[E]) xiE) Cpcps[chiE])
 \end{schemedisplay}
 \end{schemedefn}
 
-From this definition, it is apparent that \scheme|Chcps[p]|=\scheme|(((Ccps[p] Ccps[hole]) XI(hole)) Cpcps[hole])|.
+From this definition, it is apparent that \scheme|Chcps[p]|=\scheme|(((Ccps[p] Ccps[hole]) XI(hole)) Cpcps[hole])|=\scheme|Ccps[hole[p]]|.
 
 This in turn allows us to express the following lemmas.
 
@@ -960,7 +971,7 @@ The output of a manual initiation of this function is
 120
 \end{verbatim}
 
-In this example, the API to compute factorials has changed, but the change is localized. With top-level control of a program, we can transform the relevant part of the system, leaving the rest the same. This preserves interoperability with foreign functions, e.g., third-party JavaScript libraries.
+In this example, the API to compute factorials has changed, but the change is localized. With top-level control of a program, we can transform the relevant part of the system, leaving the rest the same. This preserves interoperability with foreign functions, i.e., third-party JavaScript libraries.
  
 \section{Related Work}
 
