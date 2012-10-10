@@ -4,7 +4,8 @@
 %\usepackage{amsthm}
 \usepackage{amssymb}
 \usepackage{slatex}
-\usepackage{color}
+\usepackage{listings}
+
 
 \title{Instant Continuation Marks--Just Add $\lambda$}
 
@@ -62,7 +63,7 @@ We present direct and CPS-like transformations from the call-by-value $\lambda$-
 
 Numerous programming language instruments rely on stack inspection to function. Statistical profilers sample the stack regularly to record active functions, algebraic steppers observe the stack to represent the evaluation context of an expression, and debuggers naturally require consistent access to the stack. In each of these scenarios, the instrument relies on implementation-specific information and must be maintained as the instrumented language undergoes optimizations and ventures across platforms. This makes these instruments brittle and increases the porting cost of the language ecosystem. Each would benefit from a generalized stack-inspection mechanism available within the instrumented language itself. If written in such an enhanced language, each instrument would be more robust, more easily modified, and would port for free.
 
-Continuation marks \cite{clements2006portable} are a programming language feature which generalizes stack inpection. Not only do they dramatically simplify correct instrumentation \cite{clements2001modeling}, they have been used to allow inspection-based dynamic security checks in the presence of tail-call optimization \cite{clements2004tail} and to express aspect-oriented programming in higher-order languagues \cite{tucker2003pointcuts}. [Mention parameters?]
+Continuation marks \cite{clements2006portable} are a programming language feature which generalizes stack inpection. Not only do they dramatically simplify correct instrumentation \cite{clements2001modeling}, they have been used to allow inspection-based dynamic security checks in the presence of tail-call optimization \cite{clements2004tail}, to express aspect-oriented programming in higher-order languagues \cite{tucker2003pointcuts}, and to implement a form of dynamic binding in parameters.
 
 Continuation marks originated in PLT Scheme (now Racket \cite{plt-tr1}). However, in spite of their usefulness, continuation marks have remained absent from programming languages at large. One reason for this is that retrofitting virtual machines to accommodate the level of stack inspection continuation marks must provide is expensive, especially when the virtual machines use the host stack for efficiency.
 
@@ -404,29 +405,7 @@ wherein we reap the fruits of simplicity from our laborious passing: this defini
 
 The conceptual transformation of variables \scheme'x' and values \scheme'(lambda (x) e)' is straightforward.
 
-We now address the absence of \scheme'let', \scheme'if', \scheme'cons', etc. from \lv.
-
-We can express the \scheme'let' construct in \lv\ with application. An expression such as
-\begin{schemedisplay}
-(let ((x_1 e_1)
-      ...
-      (x_n e_n))
-  e)
-\end{schemedisplay}
-can be interpreted as
-\begin{schemedisplay}
-(...((lambda (x_1) ... (lambda (x_n)
-           e)...) e_1) ...) e_n)
-\end{schemedisplay}
-which is the curried form of
-\begin{schemedisplay}
-((lambda (x_1 ... x_n)
-           e) e_1 ... e_n)
-\end{schemedisplay}
-We unfold this characterization of \scheme'let' to guide the construction of $\mathcal{C}$ before simplifying.
-[Drop everything after ``with application.''?]
-
-To achieve \scheme'if' and conditionals as well as list primitives \scheme'cons', \scheme'snd', and \scheme'nil', we use the Church encodings of fig. \ref{church-encodings}.
+Now, to address the absence of \scheme'let', \scheme'if', \scheme'cons', etc. from \lv: We can express the \scheme'let' construct in \lv\ with application. To achieve \scheme'if' and conditionals as well as list primitives \scheme'cons', \scheme'snd', and \scheme'nil', we use the Church encodings of fig. \ref{church-encodings}.
 
 \subsection{Initiation}
 
@@ -467,7 +446,6 @@ and we adjust $\hat{\mathcal{C}}$ so that
 \subsection{Definition of $\mathcal{C}$}
 
 Finally, we present the definition of $\mathcal{C}$ over the five syntactic forms of \cm.
-
 
 \begin{schemedefn}{\scheme|C[(rator-expr rand-expr)]|}
 
@@ -573,6 +551,8 @@ We present a continuation mark transformation integrated in CPS.
 \end{schemedisplay}
 \end{schemedefn}
 
+\noindent
+\begin{minipage}{0.5\linewidth}
 \begin{schemedefn}{\scheme|Ccps[v]|=\scheme|Ccps[(lambda (x) e)]|}
 \begin{schemedisplay}
 (lambda (kont)
@@ -581,7 +561,8 @@ We present a continuation mark transformation integrated in CPS.
       (kont (lambda (x) Ccps[e])))))
 \end{schemedisplay}
 \end{schemedefn}
-
+\end{minipage}
+\begin{minipage}{0.5\linewidth}
 \begin{schemedefn}{\scheme|Ccps[x]|}
 \begin{schemedisplay}
 (lambda (kont)
@@ -590,20 +571,28 @@ We present a continuation mark transformation integrated in CPS.
       (kont x))))
 \end{schemedisplay}
 \end{schemedefn}
+\end{minipage}
+\\
+\\
 
 We include corresponding definitions for $\mathcal{C}'$ and $\hat{\mathcal{C}}$.
-
+\\
+\\
+\noindent
+\begin{minipage}{0.5\linewidth}
 \begin{schemedefn}{\scheme|Cpcps[(lambda (x) e)]|}
 \begin{schemedisplay}
 (lambda (x) Ccps[e])
 \end{schemedisplay}
 \end{schemedefn}
-
+\end{minipage}
+\begin{minipage}{0.5\linewidth}
 \begin{schemedefn}{\scheme|Chcps[p]|}
 \begin{schemedisplay}
 (((Ccps[p] (lambda (x) x)) FALSE) Cpcps[nil])
 \end{schemedisplay}
 \end{schemedefn}
+\end{minipage}
 
 \subsection{Example}
 
@@ -616,10 +605,10 @@ To better illustrate what the transformation does, we step through the reduction
 (lambda (z) ((z 1) (lambda (x) (lambda (y) y))))
 \end{schemedisplay}
 
-Now consider the reduction of the same program transformed. We apply the transformation just-in-time as we reduce to reduce term size and promote clarity.
+Now consider the reduction of the same program transformed. We apply the transformation just-in-time as we reduce to prevent term size explosion and promote clarity and omit the uninteresting reductions.
 \begin{schemedisplay}
 Ch[(wcm 0 ((lambda (x) (wcm x (ccm))) 1))]
-
+; By definition this is
 ((C[(wcm 0 ((lambda (x) (wcm x (ccm))) 1))] FALSE) Cp[NIL])
 
 (((lambda (flag)
@@ -762,8 +751,6 @@ Ch[(wcm 0 ((lambda (x) (wcm x (ccm))) 1))]
 Cp[((CONS 1) NIL)]
 \end{schemedisplay}
 
-[This example is way too long. Are trivial examples generally uninteresting?]
-
 \section{Testing}
 \label{sec-testing}
 
@@ -799,89 +786,31 @@ Redex provides convenient functions to initiate random testing.
 
 With a reasonable intuition and definitions hardened by random testing, we prove correctness of the continuation-passing variant of the transform $\mathcal{C}_{\mathrm{cps}}$.
 
-We have discovered a truly marvelous proof of this, which this paper is too short to contain.
-
-We offer a sketch of the proof here.
+Because of space limitations, we offer only a sketch of the proof here. [The full proof can be found in a technical report at ...]
 
 We begin by expressing the commutativity property we have sought to preserve as a theorem:
 
-%\spnewtheorem*{maintheoremeu}{Correctness of $\hat{\mathcal{C}}$}{a}{x}
 \begin{theorem}
 For all programs $p\in\lambda_{cm}$, $\Chcps{\mathrm{eval}_{cm}(p)}=\mathrm{eval}_{v}(\Chcps{p})$.
 \end{theorem}
 
-We do this by overloading $\mathcal{C}_{\mathrm{cps}}$ to accommodate contexts which allows us to formally relate $E[e]$ and $\Ccps{E[e]}$. We first define
-\begin{plaindef}
-\[
-\xi(E)=\begin{cases}
-\mathbf{true} &\text{if $E=E'[\wcm{v'}{\hole}]$ for some $E'$ and $v'$}\\
-\mathbf{false} &\text{otherwise}
-\end{cases}
-\]
-\end{plaindef}
-to denote the \scheme'flags' argument and assume that the \scheme'marks' argument is \scheme|Cpcps[chiE]|. We can now define $\mathcal{C}_{\mathrm{cps}}$ over contexts:
-
-\begin{schemedefn}{\scheme|Ccps[hole]|}
-\begin{schemedisplay}
-(lambda (value)
-  value)
-\end{schemedisplay}
-\end{schemedefn}
-
-\begin{schemedefn}{\scheme|Ccps[E[(hole rand-value)]]|}
-\begin{schemedisplay}
-(lambda (rator-value)
-  (((Ccps[rand-expr]
-     (lambda (rand-value)
-       ((((rator-value rand-value) Ccps[E]) xiE) Cpcps[chiE])))
-    FALSE)
-  Cpcps[chiE]))
-\end{schemedisplay}
-\end{schemedefn}
-
-\begin{schemedefn}{\scheme|Ccps[E[(v_0 hole)]]|}
-\begin{schemedisplay}
-(lambda (rand-value)
-  ((((v_0 rand-value) Ccps[E]) xiE) Cpcps[chiE]))
-\end{schemedisplay}
-\end{schemedefn}
-
-\begin{schemedefn}{\scheme|Ccps[E[(wcm hole body-expr)]]|}
-\begin{schemedisplay}
-(lambda (mark-value) 
-  ((lambda (rest-marks) 
-      (((Ccps[body-expr] Ccps[E]) TRUE) Chcps[((CONS mark-value) rest-marks)]))
-    ((xiE Chcps[(SND chiE)]) Cpcps[chiE])))
-\end{schemedisplay}
-\end{schemedefn}
-
-\begin{schemedefn}{\scheme|Ccps[E[(wcm v_0 hole)]]|}
-\begin{schemedisplay}
-Ccps[E]
-\end{schemedisplay}
-\end{schemedefn}
-
-This allows us to define $\mathcal{C}_{\mathrm{cps}}$ over a context-expression pair with mildly unorthodox notation.
-
+We prove this by overloading $\mathcal{C}_{\mathrm{cps}}$ to accommodate first evaluation contexts and then context-term pairs (denoted in unorthodox style) by
 \begin{schemedefn}{\scheme|Ccps[E[e]]|}
 \begin{schemedisplay}
 (((Ccps[e] Ccps[E]) xiE) Cpcps[chiE])
 \end{schemedisplay}
 \end{schemedefn}
-
-From this definition, it is apparent that \scheme|Chcps[p]|=\scheme|(((Ccps[p] Ccps[hole]) XI(hole)) Cpcps[hole])|=\scheme|Ccps[hole[p]]|.
-
-This in turn allows us to express the following lemmas.
-
-\begin{lemma}
-For all contexts $E$ and terms $e$, $E[e]\cmrrs v\implies\C{E[e]}\lvrrs\Cp{v}$.
+\noindent
+which allows us to formally relate $E[e]$ and $\Ccps{E[e]}$. We then prove a lemma
+\begin{lemma}[Simulation]
+For all contexts $E\in\lambda_{cm}$ and expressions $e\in\lambda_{cm}$, $E[e]\cmrr E'[e']\implies\C{E[e]}\lvrrs\C{E'[e']}$
+\end{lemma}
+by induction over contexts $E$ and terms $e$. This lemma justifies the evolution of the evaluation context and each rule in the reduction relation except rule \ref{reduction}. We express this with
+\begin{lemma}[Reduction]
+For all values $v_0,v_1\in\lambda_{cm}$, $\app{v_0}{v_1}\cmrr e'\implies\app{\Cpcps{v_0}}{\Cpcps{v_1}}\lvrr\Ccps{e'}$.
 \end{lemma}
 
-To accomplish this, we first prove by structural induction that for all terms $e$ and context $E$ arbitrary but fixed, $E[e]\cmrrs E[v]\implies\C{E[e]}\lvrrs\C{E[v]}$. 
-
-We then prove that for all contexts $E$, $E[v]\cmrrs v'\implies\C{E[v]}\lvrrs\Cp{v'}$.
-
-The theorem follows.
+With these lemmas, the theorem follows quickly.
 
 \section{Back to JavaScript}
 \label{sec-javascript}
@@ -978,12 +907,13 @@ In this example, the API to compute factorials has changed, but the change is lo
 Monads, introduced by Moggi \cite{moggi1989computational}, are another way to model semantics. Their appeal is significant: they allow one to implement a particular model of computation with with a pure computational logic, such as the \lc.
 
 Expressing continuation marks in a monadic way is simple enough. In Haskell,
-\begin{verbatim}
+\begin{lstlisting}[language=Haskell]
 data CM m a = CM ((Bool,[m]) -> a)
 
 instance Monad (CM m) where
   return x = CM (\_ -> x)
-  (CM m) >>= f = CM (\(flag,vs) -> let (CM m') = f (m (False,vs)) in m' (flag,vs))
+  (CM m) >>= f = CM (\(flag,vs) ->
+      let (CM m') = f (m (False,vs)) in m' (flag,vs))
 
 wcm :: m -> CM m a -> CM m a
 wcm v (CM m) = CM (\(f,vs) -> m (True, v:(if f then (tail vs) else vs)))
@@ -993,18 +923,12 @@ ccm = CM (\(_,vs) -> vs)
 
 runCM :: CM m a -> a
 runCM (CM m) = m (False,[])
-\end{verbatim}
-is one way, using our approach. The factorial functions leveraging this implementation exhibit the correct continuation mark behavior but this is \emph{not} a monad. Specifically, the right identity law
-\begin{verbatim}
-m >>= return = m
-\end{verbatim}
-does not hold since \texttt{CM} conceptually adds a stack frame in bind (\texttt{>>=}). Ager et al. \cite{ager2003functional} implemented a similar stack-inspection monad in terms of a lifted state monad, but resorted to manual management of the stack frames.
+\end{lstlisting}
+is one way, using our approach. The factorial functions leveraging this implementation exhibit the correct continuation mark behavior but this is \emph{not} a monad. Specifically, the right identity law, \texttt{m >>= return = m}, does not hold since \texttt{CM} conceptually adds a stack frame in bind (\texttt{>>=}). Ager et al. \cite{ager2003functional} implemented a similar stack-inspection monad in terms of a lifted state monad, but resorted to manual management of the stack frames.
 
-\section{Future Work}
+\section{Future Work and Conclusion}
 
 Although we used some level of mechanization in the proof of the theorem, a formal proof assistant, such as Coq \cite{barras1997coq}, would increase confidence out of the gate that the transformation was correct.
-
-\section{Conclusion}
 
 Continuation marks support a bevy of instrumentation tools and advanced language features in a generalized, portable way. Despite their demonstrated utility, they have not yet found their way into most languages. A verified characterization of continuation marks in a pure computational language provides implementors of higher-order languages a correct compiler for continuation marks.
 
