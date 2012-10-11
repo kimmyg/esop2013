@@ -409,7 +409,7 @@ Now, to address the absence of \scheme'let', \scheme'if', \scheme'cons', etc. fr
 
 \subsection{Initiation}
 
-In our call-by-value language, abstracting terms has the effect of suspending evaluation. When an entire program is transformed, all evaluation is suspended, awaiting arguments representing contextual information. At the top level, the context is empty, so we pass the contextual information for the empty context: \scheme'FALSE', indicating evaluation is \emph{not} occurring in \scheme'wcm' tail position and \scheme'NIL', an empty list of marks.
+In our call-by-value language, abstracting terms has the effect of suspending evaluation. When an entire program is transformed, all evaluation is suspended, awaiting arguments representing contextual information. At the top level, the context is empty, so we pass the contextual information for the empty context: \scheme'FALSE', indicating evaluation is \emph{not} occurring in \scheme'wcm' tail position, and \scheme'NIL', an empty list of marks.
 
 We can accommodate this by defining a top-level transform $\hat{\mathcal{C}}$ in terms of $\mathcal{C}$ by
 \begin{equation}
@@ -417,6 +417,7 @@ We can accommodate this by defining a top-level transform $\hat{\mathcal{C}}$ in
 \end{equation}
 
 and stating our commutativity property as
+[make this equivalence since the left side needs to be reduced?]
 \begin{equation}
 \label{commutativity-property}
 \Ch{\evalcm{p}}=\evalv{\Ch{p}}
@@ -806,8 +807,9 @@ which allows us to formally relate $E[e]$ and $\Ccps{E[e]}$. We then prove a lem
 For all contexts $E\in\lambda_{cm}$ and expressions $e\in\lambda_{cm}$, $E[e]\cmrr E'[e']\implies\C{E[e]}\lvrrs\C{E'[e']}$
 \end{lemma}
 by induction over contexts $E$ and terms $e$. This lemma justifies the evolution of the evaluation context and each rule in the reduction relation except rule \ref{reduction}. We express this with
-\begin{lemma}[Reduction]
-For all values $v_0,v_1\in\lambda_{cm}$, $\app{v_0}{v_1}\cmrr e'\implies\app{\Cpcps{v_0}}{\Cpcps{v_1}}\lvrr\Ccps{e'}$.
+\begin{lemma}[Substitution]
+\label{lem:substitution}
+For all $e,x,v\in\lambda_{cm}$, $\C{e[x\leftarrow v]}=\C{e}[x\leftarrow \Cp{v}]$.
 \end{lemma}
 
 With these lemmas, the theorem follows quickly.
