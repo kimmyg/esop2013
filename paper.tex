@@ -1,11 +1,16 @@
 \documentclass{llncs}
 
 \usepackage{amsmath}
-%\usepackage{amsthm}
 \usepackage{amssymb}
 \usepackage{slatex}
 \usepackage{listings}
+\usepackage[usenames,dvipsnames]{xcolor}
 
+\lstset{
+	basicstyle=\small\ttfamily,
+	keywordstyle=\color{RoyalBlue},
+	identifierstyle=\color{gray}
+}
 
 \title{Instant Continuation Marks--Just Add $\lambda$}
 
@@ -69,7 +74,7 @@ Continuation marks originated in PLT Scheme (now Racket \cite{plt-tr1}). However
 
 For example, the ubiquitous JavaScript is an ideal candidate for the addition of continuation marks. However, as the lingua franca of the web, it has numerous mature implementations which have been heavily optimized. To add continuation marks to JavaScript amounts to modifying each implementation upstream, to say nothing of amending the JavaScript standard. (Clements et al. successfully added continuation marks in Mozilla's Rhino compiler \cite{clements2008implementing}, but it remains a proof-of-concept.)
 
-To avoid this roadblock, we instead take a macro-style approach; that is, we enhance the core language with facilities to manipulate continuation marks and desugar the enhanced language back to the core. To make our desugaring transformation portable to other languages, we define it over the \lc, the common core of most higher-order languages. With such a transformation, language semanticists do not need to reconcile the feature with other features in the language (provided they have already done so with $\lambda$) and their compiler writers do not need to worry about complicating their implementations (for the same reason).
+To avoid this roadblock, we instead take a macro-style approach; that is, we enhance a core language with facilities to manipulate continuation marks and desugar the enhanced language back to the core. To make our desugaring transformation portable to other languages, we define it over the \lc, the common core of most higher-order languages. With such a transformation, language semanticists do not need to reconcile the feature with other features in the language (provided they have already done so with $\lambda$) and their compiler writers do not need to worry about complicating their implementations (for the same reason).
 
 We begin by further explaining continuation marks in section \ref{sec-continuation-marks}. We then formalize them via the introduction of a core and enhanced language in section \ref{sec-core-and-extension}. We discuss the necessary properties of a meaningful transformation between these languages. We present two transformations of continuation marks--one direct and one CPS-like--to the call-by-value \lc\ in section \ref{sec-transformation}. This is followed by randomized testing using a lightweight mechanized model in section \ref{sec-testing} and a proof of a meaning-preservation theorem in section \ref{sec-proof}. We finally apply it to JavaScript in section \ref{sec-javascript}.
 
@@ -785,7 +790,7 @@ Redex provides convenient functions to initiate random testing.
 \section{Proof}
 \label{sec-proof}
 
-With a reasonable intuition and definitions hardened by random testing, we prove correctness of the continuation-passing variant of the transform $\mathcal{C}_{\mathrm{cps}}$.
+With a reasonable intuition and definitions hardened by random testing, we prove correctness of the continuation-passing variant of the transform, $\mathcal{C}_{\mathrm{cps}}$.
 
 Because of space limitations, we offer only a sketch of the proof here. [The full proof can be found in a technical report at ...]
 
@@ -824,7 +829,7 @@ We add two keywords to manipulate continuation marks: the familiar \texttt{wcm} 
 Tail-call elimination is not part of the JavaScript specification which complicates the treatment of the tail-call behavior. We simulate proper tail-call behavior by using the flag to encode whether a function call is in tail position.
 
 A properly-recursive factorial can be implemented in this JavaScript extension as
-\begin{verbatim}
+\begin{lstlisting}[language=C,morekeywords={var,function,wcm,ccm,true,false}]
 var fac = function( n ) {
   if( n == 0 ) {
     console.log( ccm );
@@ -835,10 +840,10 @@ var fac = function( n ) {
                { n * fac( n - 1 ) };
   }
 }
-\end{verbatim}
+\end{lstlisting}
 
 A direct-style transformation of this function desugars these constructs into vanilla JavaScript, leveraging native arrays for lists of continuation marks.
-\begin{verbatim}
+\begin{lstlisting}[language=C,morekeywords={var,function,wcm,ccm,true,false}]
 var fac = function( flag, marks ) {
   return function( n ) {
     if( n == 0 ) {
@@ -854,17 +859,17 @@ var fac = function( flag, marks ) {
     }
   }
 }
-\end{verbatim}
+\end{lstlisting}
 
 As expected, the output of a manual initiation of this function is
-\begin{verbatim}
+\begin{lstlisting}[language=C,morekeywords={var,function,wcm,ccm,true,false}]
 > fac( false, [] )( 5 )
 [ 1, 2, 3, 4, 5 ]
 120
-\end{verbatim}
+\end{lstlisting}
 
 A tail-recursive factorial is expressible in this extension as
-\begin{verbatim}
+\begin{lstlisting}[language=C,morekeywords={var,function,wcm,ccm,true,false}]
 var fac = function( n, acc ) {
   if( n == 0 ) {
     console.log( ccm );
@@ -875,9 +880,9 @@ var fac = function( n, acc ) {
                { fac( n - 1, n * acc ) };
   }
 }
-\end{verbatim}
+\end{lstlisting}
 and transforms to
-\begin{verbatim}
+\begin{lstlisting}[language=C,morekeywords={var,function,wcm,ccm,true,false}]
 var fac = function( flag, marks ) {
   return function( n, acc ) {
     if( n == 0 ) {
@@ -893,14 +898,14 @@ var fac = function( flag, marks ) {
     }
   }
 }
-\end{verbatim}
+\end{lstlisting}
 
 The output of a manual initiation of this function is
-\begin{verbatim}
+\begin{lstlisting}[language=C,morekeywords={var,function,wcm,ccm,true,false}]
 > fac( false, [] )( 5, 1 )
 [ 1 ]
 120
-\end{verbatim}
+\end{lstlisting}
 
 In this example, the API to compute factorials has changed, but the change is localized. With top-level control of a program, we can transform the relevant part of the system, leaving the rest the same. This preserves interoperability with foreign functions, i.e., third-party JavaScript libraries.
  
