@@ -420,7 +420,7 @@ We can accommodate this by defining a top-level transform $\hat{\mathcal{C}}$ in
 \begin{equation}
 \Ch{p}=\app{\app{\C{p}}{\false}}{\nil}
 \end{equation}
-This changes our commutativity property somewhat, since applying $\hat{\mathcal{C}}$ to a value--say, the result of $\mathrm{eval}_{cm}$--will instigate further, if benign, reduction. In light of this, we must alter our statement about commutativity to reflect that we no longer guarantee term equality, but term equivalence, in the sense that they have the same normal form, or share a lack thereof.
+This changes our commutativity property somewhat, since applying $\hat{\mathcal{C}}$ to a value--say, the result of $\mathrm{eval}_{cm}$--will instigate further, if benign, reduction. In light of this, we must alter our statement about commutativity to reflect that we no longer guarantee term equality, but term equivalence, in the sense that they share a normal form (or lack of one).
 We can state this modified property as
 \begin{equation}
 \label{commutativity-property}
@@ -613,85 +613,59 @@ To better illustrate what the transformation does, we step through the reduction
 Now consider the reduction of the same program transformed. We apply the transformation just-in-time as we reduce to prevent term size explosion and promote clarity and omit the uninteresting reductions.
 \begin{schemedisplay}
 Ch[(wcm 0 ((lambda (x) (wcm x (ccm))) 1))]
-; By definition this is
+\end{schemedisplay}
+
+By definition this is
+\begin{schemedisplay}
 ((C[(wcm 0 ((lambda (x) (wcm x (ccm))) 1))] FALSE) Cp[NIL])
-; which explodes upon expansion to
+\end{schemedisplay}
+which explodes upon expansion to
+\begin{schemedisplay}
 (((lambda (flag)
     (lambda (marks)
       ((C[((lambda (x) (wcm x (ccm))) 1)] TRUE)
        (((lambda (mark-value) (lambda (rest-marks) Cp[((CONS mark-value) rest-marks)]))
          ((C[0] FALSE) marks)) ((flag Ch[(SND marks)]) marks)))))
   FALSE) Cp[NIL])
+\end{schemedisplay}
 
-((lambda (marks)
-   ((C[((lambda (x) (wcm x (ccm))) 1)] TRUE)
-    (((lambda (mark-value) (lambda (rest-marks) Cp[((CONS mark-value) rest-marks)]))
-      ((C[0] FALSE) marks)) ((FALSE Ch[(SND marks)]) marks))))
- Cp[NIL])
-
+After the application of contextual information, we reach
+\begin{schemedisplay}
 ((C[((lambda (x) (wcm x (ccm))) 1)] TRUE)
  (((lambda (mark-value) (lambda (rest-marks) Cp[((CONS mark-value) rest-marks)]))
    ((C[0] FALSE) Cp[NIL])) ((FALSE Ch[(SND NIL)]) Cp[NIL])))
+\end{schemedisplay}
+the transformation of a \scheme'wcm' body. No evaluation of this term occurs until the contextual information has been evaluated and applied. In the process of evaluation, the \scheme'mark-expr' is evaluated and prepended to the list of continutation marks.
 
-((C[((lambda (x) (wcm x (ccm))) 1)] TRUE)
- (((lambda (mark-value) (lambda (rest-marks) Cp[((CONS mark-value) rest-marks)]))
-   (((lambda (flag) (lambda (marks) 0)) FALSE) Cp[NIL])) ((FALSE Ch[(SND NIL)]) Cp[NIL])))
-
-((C[((lambda (x) (wcm x (ccm))) 1)] TRUE)
- (((lambda (mark-value) (lambda (rest-marks) Cp[((CONS mark-value) rest-marks)]))
-   ((lambda (marks) 0) Cp[NIL])) ((FALSE Ch[(SND NIL)]) Cp[NIL])))
-
-((C[((lambda (x) (wcm x (ccm))) 1)] TRUE)
- (((lambda (mark-value) (lambda (rest-marks) Cp[((CONS mark-value) rest-marks)]))
-   0) ((FALSE Ch[(SND NIL)]) Cp[NIL])))
-
-((C[((lambda (x) (wcm x (ccm))) 1)] TRUE)
- ((lambda (rest-marks) Cp[((CONS 0) rest-marks)])
-  ((FALSE Ch[(SND NIL)]) Cp[NIL])))
-
-((C[((lambda (x) (wcm x (ccm))) 1)] TRUE)
- ((lambda (rest-marks) Cp[((CONS 0) rest-marks)])
-  Cp[NIL]))
-
+This ultimately results in the following:
+\begin{schemedisplay}
 ((C[((lambda (x) (wcm x (ccm))) 1)] TRUE) Cp[((CONS 0) NIL)])
+\end{schemedisplay}
 
+It is evident that this term will behave exactly as a top-level term except as this contextual information influences it, and this is exactly the property we have strived for. Expansion of this term yields
+\begin{schemedisplay}
 (((lambda (flag)
     (lambda (marks)
       (((((C[(lambda (x) (wcm x (ccm)))] FALSE) marks)
          ((C[1] FALSE) marks))
         flag)
        marks))) TRUE) Cp[((CONS 0) NIL)])
+\end{schemedisplay}
+the expansion of an application. Both these terms are values, so are unaffected by the contextual information.
 
-(((((C[(lambda (x) (wcm x (ccm)))] FALSE) Cp[((CONS 0) NIL)])
-   ((C[1] FALSE) Cp[((CONS 0) NIL)]))
-  TRUE) Cp[((CONS 0) NIL)])
-
-((((((lambda (flag) (lambda (marks) (lambda (x) C[(wcm x (ccm))]))) FALSE) Cp[((CONS 0) NIL)])
-   ((C[1] FALSE) Cp[((CONS 0) NIL)]))
-  TRUE) Cp[((CONS 0) NIL)])
-
-(((((lambda (marks) (lambda (x) C[(wcm x (ccm))])) Cp[((CONS 0) NIL)])
-   ((C[1] FALSE) Cp[((CONS 0) NIL)]))
-  TRUE) Cp[((CONS 0) NIL)])
-
-((((lambda (x) C[(wcm x (ccm))])
-   ((C[1] FALSE) Cp[((CONS 0) NIL)]))
-  TRUE) Cp[((CONS 0) NIL)])
-
-((((lambda (x) C[(wcm x (ccm))])
-   (((lambda (flag) (lambda (marks) 1)) FALSE) Cp[((CONS 0) NIL)]))
-  TRUE) Cp[((CONS 0) NIL)])
-
-((((lambda (x) C[(wcm x (ccm))])
-   ((lambda (marks) 1) Cp[((CONS 0) NIL)]))
-  TRUE) Cp[((CONS 0) NIL)])
-
+The elided reduction has the effect of preparing the terms for application.
+\begin{schemedisplay}
 ((((lambda (x) C[(wcm x (ccm))])
    1) TRUE) Cp[((CONS 0) NIL)])
-
+\end{schemedisplay}
+reduces to
+\begin{schemedisplay}
 ((C[(wcm 1 (ccm))]
    TRUE) Cp[((CONS 0) NIL)])
+\end{schemedisplay}
 
+This expands and reduces as the \scheme'wcm' term seen previously:
+\begin{schemedisplay}
 (((lambda (flag)
     (lambda (marks)
       ((C[(ccm)] TRUE)
@@ -699,62 +673,31 @@ Ch[(wcm 0 ((lambda (x) (wcm x (ccm))) 1))]
          ((C[1] FALSE) marks))
         ((flag Ch[(SND marks)]) marks)))))
   TRUE) Cp[((CONS 0) NIL)])
+\end{schemedisplay}
 
-((lambda (marks)
-   ((C[(ccm)] TRUE)
-    (((lambda (mark-value) (lambda (rest-marks) Cp[((CONS mark-value) rest-marks)]))
-      ((C[1] FALSE) marks))
-     ((TRUE Ch[(SND marks)]) marks))))
- Cp[((CONS 0) NIL)])
-
-((C[(ccm)] TRUE)
- (((lambda (mark-value) (lambda (rest-marks) Cp[((CONS mark-value) rest-marks)]))
-   ((C[1] FALSE) Cp[((CONS 0) NIL)]))
-  ((TRUE Ch[(SND ((CONS 0) NIL))]) Cp[((CONS 0) NIL)])))
-
-(((lambda (flag) (lambda (marks) marks))
-  TRUE)
- (((lambda (mark-value) (lambda (rest-marks) Cp[((CONS mark-value) rest-marks)]))
-   ((C[1] FALSE) Cp[((CONS 0) NIL)]))
-  ((TRUE Ch[(SND ((CONS 0) NIL))]) Cp[((CONS 0) NIL)])))
-
-((lambda (marks) marks)
- (((lambda (mark-value) (lambda (rest-marks) Cp[((CONS mark-value) rest-marks)]))
-   ((C[1] FALSE) Cp[((CONS 0) NIL)]))
-  ((TRUE Ch[(SND ((CONS 0) NIL))]) Cp[((CONS 0) NIL)])))
-
-((lambda (marks) marks)
- (((lambda (mark-value) (lambda (rest-marks) Cp[((CONS mark-value) rest-marks)]))
-   (((lambda (flag) (lambda (marks) 1)) FALSE) Cp[((CONS 0) NIL)]))
-  ((TRUE Ch[(SND ((CONS 0) NIL))]) Cp[((CONS 0) NIL)])))
-
-((lambda (marks) marks)
- (((lambda (mark-value) (lambda (rest-marks) Cp[((CONS mark-value) rest-marks)]))
-   ((lambda (marks) 1) Cp[((CONS 0) NIL)]))
-  ((TRUE Ch[(SND ((CONS 0) NIL))]) Cp[((CONS 0) NIL)])))
-
-((lambda (marks) marks)
- (((lambda (mark-value) (lambda (rest-marks) Cp[((CONS mark-value) rest-marks)]))
-   1)
-  ((TRUE Ch[(SND ((CONS 0) NIL))]) Cp[((CONS 0) NIL)])))
-
+Of interest in this process is the effective collapse of the previous \scheme'mark' context by virtue of the value of \scheme'flag'. When we reach
+\begin{schemedisplay}
 ((lambda (marks) marks)
  ((lambda (rest-marks) Cp[((CONS 1) rest-marks)])
   ((TRUE Ch[(SND ((CONS 0) NIL))]) Cp[((CONS 0) NIL)])))
-
+\end{schemedisplay}
+the list is beheaded to simulate mark overwriting:
+\begin{schemedisplay}
 ((lambda (marks) marks)
  ((lambda (rest-marks) Cp[((CONS 1) rest-marks)])
   Ch[(SND ((CONS 0) NIL))]))
+\end{schemedisplay}
 
-((lambda (marks) marks)
- ((lambda (rest-marks) Cp[((CONS 1) rest-marks)])
-  Cp[NIL]))
-
+With the contextual information given, the evaluation of \scheme'ccm' is simple:
+\begin{schemedisplay}
 ((lambda (marks) marks)
  Cp[((CONS 1) NIL)])
-
+\end{schemedisplay}
+reduces to
+\begin{schemedisplay}
 Cp[((CONS 1) NIL)]
 \end{schemedisplay}
+and we are left with just what we hoped for.
 
 \section{Testing}
 \label{sec-testing}
