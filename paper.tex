@@ -420,16 +420,15 @@ We can accommodate this by defining a top-level transform $\hat{\mathcal{C}}$ in
 \begin{equation}
 \Ch{p}=\app{\app{\C{p}}{\false}}{\nil}
 \end{equation}
-
-and stating our commutativity property as
-[make this equivalence since the left side needs to be reduced?]
+This changes our commutativity property somewhat, since applying $\hat{\mathcal{C}}$ to a value--say, the result of $\mathrm{eval}_{cm}$--will instigate further, if benign, reduction. In light of this, we must alter our statement about commutativity to reflect that we no longer guarantee term equality, but term equivalence, in the sense that they have the same normal form, or share a lack thereof.
+We can state this modified property as
 \begin{equation}
 \label{commutativity-property}
-\Ch{\evalcm{p}}=\evalv{\Ch{p}}
+\Ch{\evalcm{p}}\equiv\evalv{\Ch{p}}
 \end{equation}
-which is equivalent to
+which, expanded, is
 \begin{equation}
-\app{\app{\C{\evalcm{p}}}{\false}}{\nil}=\evalv{\app{\app{\C{p}}{\false}}{\nil}}
+\app{\app{\C{\evalcm{p}}}{\false}}{\nil}\equiv\evalv{\app{\app{\C{p}}{\false}}{\nil}}
 \end{equation}
 
 \subsection{Some Final Subtleties}
@@ -616,7 +615,7 @@ Now consider the reduction of the same program transformed. We apply the transfo
 Ch[(wcm 0 ((lambda (x) (wcm x (ccm))) 1))]
 ; By definition this is
 ((C[(wcm 0 ((lambda (x) (wcm x (ccm))) 1))] FALSE) Cp[NIL])
-
+; which explodes upon expansion to
 (((lambda (flag)
     (lambda (marks)
       ((C[((lambda (x) (wcm x (ccm))) 1)] TRUE)
