@@ -10,6 +10,25 @@
 
 \setkeyword{wcm ccm with-continuation-mark current-continuation-marks}
 \setkeyword{print fac zero?}
+\setconstant{error}
+
+\setspecialsymbol{<-}{$\leftarrow$}
+\setspecialsymbol{Ccps}{$\mathcal{C}_{\mathrm{cps}}$}
+\setspecialsymbol{Cpcps}{$\mathcal{C}'_{\mathrm{cps}}$}
+\setspecialsymbol{Chcps}{$\hat{\mathcal{C}}_{\mathrm{cps}}$}
+\setspecialsymbol{TRUE}{$\mathbf{true}$}
+\setspecialsymbol{FALSE}{$\mathbf{false}$}
+\setspecialsymbol{CONS}{$\mathbf{cons}$}
+\setspecialsymbol{SND}{$\mathbf{snd}$}
+\setspecialsymbol{v_0}{$v_0$}
+\setspecialsymbol{lambda}{$\lambda$}
+\setspecialsymbol{ep}{$e'$}
+\setspecialsymbol{xp}{$x'$}
+\setspecialsymbol{CE}{$\mathcal{C}_{\mathrm{cps}}[E]$}
+\setspecialsymbol{xiE}{$\xi(E)$}
+\setspecialsymbol{chiE}{$\chi(E)$}
+\setspecialsymbol{XI}{$\xi$}
+\setspecialsymbol{hole}{$\bullet$}
 
 \newcommand{\cm}[0]{$\lambda_{cm}$}
 \newcommand{\lv}[0]{$\lambda_v$}
@@ -36,10 +55,17 @@
 \newcommand{\evalv}[1]{\mathrm{eval}_v(#1)}
 \newcommand{\evalcm}[1]{\mathrm{eval}_{cm}(#1)}
 
-\renewcommand{\chapter}[1]{\section{#1}}
+\let\subsectionorig\subsection
+\let\sectionorig\section
+\let\chapterorig\chapter
 
-\title{Proof of Correctness of $\mathcal{C}$\\
-Technical Report [Title?]}
+\renewcommand{\section}[1]{\subsectionorig{#1}}
+\renewcommand{\chapter}[1]{\sectionorig{#1}}
+
+\renewcommand{\newtheorem}[1]{\spnewtheorem*{#1}{\bfseries}{\bfseries}}
+
+\title{Instant Continuation Marks--Just Add $\lambda$\\
+Technical Report}
 
 \author{Kimball Germane \and Jay McCarthy}
 \institute{Brigham Young University, Provo, Utah}
@@ -47,6 +73,8 @@ Technical Report [Title?]}
 \begin{document}
 
 \maketitle
+
+This report contains a formal, partially-mechanical proof of the correctness of $\mathcal{C}_{\mathrm{cps}}$.
 
 \input{proof.tex}
 \input{mechanics.tex}
