@@ -1,0 +1,54 @@
+\documentclass{llncs}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{slatex}
+
+\newenvironment{schemeblock}{}{}
+\newenvironment{schemedefinition}[1]{\begin{definition}#1\par}{\end{definition}}
+\newenvironment{namedschemedefinition}[2]{\begin{definition}\label{#1}#2\par}{\end{definition}}
+
+\setkeyword{wcm ccm with-continuation-mark current-continuation-marks}
+\setkeyword{print fac zero?}
+
+\newcommand{\cm}[0]{$\lambda_{cm}$}
+\newcommand{\lv}[0]{$\lambda_v$}
+\newcommand{\lc}[0]{$\lambda$-calculus}
+\newcommand{\wcm}[2]{(\mathrm{wcm}\,#1\,#2)}
+\newcommand{\ccm}[0]{(\mathrm{ccm})}
+\newcommand{\wcmb}[2]{(\mathbf{wcm}\,#1\,#2)}
+\newcommand{\ccmb}[0]{(\mathbf{ccm})}
+\newcommand{\app}[2]{(#1\,#2)}
+\newcommand{\abs}[2]{(\lambda\,(#1)\,#2)}
+\newcommand{\hole}[0]{\bullet}
+\newcommand{\rr}[0]{\rightarrow}
+\newcommand{\lrrs}[0]{\rightarrow^{*}}
+\newcommand{\lvrr}[0]{\rightarrow_v}
+\newcommand{\lvrrs}[0]{\rightarrow_v^{*}}
+\newcommand{\cmrr}[0]{\rightarrow_{cm}}
+\newcommand{\cmrrs}[0]{\rightarrow_{cm}^{*}}
+\newcommand{\C}[1]{\mathcal{C}[#1]}
+\newcommand{\Cp}[1]{\mathcal{C}'[#1]}
+\newcommand{\Ch}[1]{\hat{\mathcal{C}}[#1]}
+\newcommand{\Ccps}[1]{\mathcal{C}_{\mathrm{cps}}[#1]}
+\newcommand{\Cpcps}[1]{\mathcal{C}'_{\mathrm{cps}}[#1]}
+\newcommand{\Chcps}[1]{\hat{\mathcal{C}}_{\mathrm{cps}}[#1]}
+\newcommand{\evalv}[1]{\mathrm{eval}_v(#1)}
+\newcommand{\evalcm}[1]{\mathrm{eval}_{cm}(#1)}
+
+\renewcommand{\chapter}[1]{\section{#1}}
+
+\title{Proof of Correctness of $\mathcal{C}$\\
+Technical Report [Title?]}
+
+\author{Kimball Germane \and Jay McCarthy}
+\institute{Brigham Young University, Provo, Utah}
+
+\begin{document}
+
+\maketitle
+
+\input{proof.tex}
+\input{mechanics.tex}
+
+\end{document}

@@ -1,10 +1,16 @@
 \documentclass{llncs}
 
 \usepackage{amsmath}
-%\usepackage{amsthm}
 \usepackage{amssymb}
 \usepackage{slatex}
-\usepackage{color}
+\usepackage{listings}
+\usepackage[usenames,dvipsnames]{xcolor}
+
+\lstset{
+	basicstyle=\small\ttfamily,
+	keywordstyle=\color{RoyalBlue},
+	identifierstyle=\color{gray}
+}
 
 \title{Instant Continuation Marks--Just Add $\lambda$}
 
@@ -55,20 +61,20 @@
 \begin{abstract}
 Continuation marks are a programming language feature which generalizes stack inspection. Despite its usefulness, this feature has not been adopted by languages which rely on stack inspection, e.g., for dynamic security checks. One reason for this neglect may be that continuation marks do not yet enjoy a transformation to the plain $\lambda$-calculus which would allow higher-order languages to provide continuation marks at little cost.
 
-We present direct and CPS-like transformations from the call-by-value $\lambda$-calculus augmented with continuation marks to the pure call-by-value $\lambda$-calculus. We discuss how such transformations simplify the construction of compilers which treat continuation marks correctly. We document how Redex, a domain-specific language for exploring language semantics, aided the discovery of correct transformations. Finally, we verify the transformations with the proof of a meaning-preservation theorem.
+We present direct and CPS-like transformations from the call-by-value $\lambda$-calculus augmented with continuation marks to the pure call-by-value $\lambda$-calculus. We discuss how such transformations simplify the construction of compilers which treat continuation marks correctly. We document how Redex, a domain-specific language for exploring language semantics, aided the discovery of correct transformations. We verify the transformations with the proof of a meaning-preservation theorem. Finally, we apply the transformation to JavaScript.
 \end{abstract}
 
 \section{Introduction}
 
 Numerous programming language instruments rely on stack inspection to function. Statistical profilers sample the stack regularly to record active functions, algebraic steppers observe the stack to represent the evaluation context of an expression, and debuggers naturally require consistent access to the stack. In each of these scenarios, the instrument relies on implementation-specific information and must be maintained as the instrumented language undergoes optimizations and ventures across platforms. This makes these instruments brittle and increases the porting cost of the language ecosystem. Each would benefit from a generalized stack-inspection mechanism available within the instrumented language itself. If written in such an enhanced language, each instrument would be more robust, more easily modified, and would port for free.
 
-Continuation marks \cite{clements2006portable} are a programming language feature which generalizes stack inpection. Not only do they dramatically simplify correct instrumentation \cite{clements2001modeling}, they have been used to allow inspection-based dynamic security checks in the presence of tail-call optimization \cite{clements2004tail} and to express aspect-oriented programming in higher-order languagues \cite{tucker2003pointcuts}. [Mention parameters?]
+Continuation marks \cite{clements2006portable} are a programming language feature which generalizes stack inspection. Not only do they dramatically simplify correct instrumentation \cite{clements2001modeling}, they have been used to allow inspection-based dynamic security checks in the presence of tail-call optimization \cite{clements2004tail}, to express aspect-oriented programming in higher-order languages \cite{tucker2003pointcuts}, and to implement a form of dynamic binding in parameters.
 
 Continuation marks originated in PLT Scheme (now Racket \cite{plt-tr1}). However, in spite of their usefulness, continuation marks have remained absent from programming languages at large. One reason for this is that retrofitting virtual machines to accommodate the level of stack inspection continuation marks must provide is expensive, especially when the virtual machines use the host stack for efficiency.
 
 For example, the ubiquitous JavaScript is an ideal candidate for the addition of continuation marks. However, as the lingua franca of the web, it has numerous mature implementations which have been heavily optimized. To add continuation marks to JavaScript amounts to modifying each implementation upstream, to say nothing of amending the JavaScript standard. (Clements et al. successfully added continuation marks in Mozilla's Rhino compiler \cite{clements2008implementing}, but it remains a proof-of-concept.)
 
-To avoid this roadblock, we instead take a macro-style approach; that is, we enhance the core language with facilities to manipulate continuation marks and desugar the enhanced language back to the core. To make our desugaring transformation portable to other languages, we define it over the \lc, the common core of most higher-order languages. With such a transformation, language semanticists do not need to reconcile the feature with other features in the language (provided they have already done so with $\lambda$) and their compiler writers do not need to worry about complicating their implementations (for the same reason).
+To avoid this roadblock, we instead take a macro-style approach; that is, we enhance a core language with facilities to manipulate continuation marks and desugar the enhanced language back to the core. To make our desugaring transformation portable to other languages, we define it over the \lc, the common core of most higher-order languages. With such a transformation, language semanticists do not need to reconcile the feature with other features in the language (provided they have already done so with $\lambda$) and their compiler writers do not need to worry about complicating their implementations (for the same reason).
 
 We begin by further explaining continuation marks in section \ref{sec-continuation-marks}. We then formalize them via the introduction of a core and enhanced language in section \ref{sec-core-and-extension}. We discuss the necessary properties of a meaningful transformation between these languages. We present two transformations of continuation marks--one direct and one CPS-like--to the call-by-value \lc\ in section \ref{sec-transformation}. This is followed by randomized testing using a lightweight mechanized model in section \ref{sec-testing} and a proof of a meaning-preservation theorem in section \ref{sec-proof}. We finally apply it to JavaScript in section \ref{sec-javascript}.
 
@@ -146,7 +152,7 @@ The evaluation of the factorial of 2, here expressed by \scheme|(fac 2 1)|, proc
 (wcm 2 (if (zero? 1) ... (wcm 1 (fac (- 1 1) (* 1 2)))))
 (wcm 2 (wcm 1 (fac (- 1 1) (* 1 2))))
 \end{schemedisplay}
-At this point, there is one \scheme'wcm' directive directly nested within another. Behaviorally, the outer one is collapsed \emph{before} evaluation of the inner body proceeds. In effect, it is overwritten. Following this, evaluation continues as
+At this point, there is one \scheme'wcm' directive directly nested within another. Behaviorally, the outer one is collapsed \emph{before} evaluation of the inner body proceeds. In essence, it is overwritten. Following this, evaluation continues as
 \begin{schemedisplay}
 (wcm 1 (fac (- 1 1) (* 1 2)))
 (wcm 1 (fac 0 (* 1 2)))
@@ -280,6 +286,7 @@ This definition formalizes the intuition given earlier regarding the behavior of
 \setspecialsymbol{e_0p_x_v_1}{$e'_0[x\leftarrow v_1]$}
 \setspecialsymbol{Cz}{$\C{z}$}
 \setspecialsymbol{CE}{$\C{E}$}
+\setspecialsymbol{XI}{$\xi$}
 \setspecialsymbol{xiE}{$\xi(E)$}
 \setspecialsymbol{chiE}{$\chi(E)$}
 \setspecialsymbol{CchiE}{$\C{\chi(E)}$}
@@ -403,47 +410,25 @@ wherein we reap the fruits of simplicity from our laborious passing: this defini
 
 The conceptual transformation of variables \scheme'x' and values \scheme'(lambda (x) e)' is straightforward.
 
-We now address the absence of \scheme'let', \scheme'if', \scheme'cons', etc. from \lv.
-
-We can express the \scheme'let' construct in \lv\ with application. An expression such as
-\begin{schemedisplay}
-(let ((x_1 e_1)
-      ...
-      (x_n e_n))
-  e)
-\end{schemedisplay}
-can be interpreted as
-\begin{schemedisplay}
-(...((lambda (x_1) ... (lambda (x_n)
-           e)...) e_1) ...) e_n)
-\end{schemedisplay}
-which is the curried form of
-\begin{schemedisplay}
-((lambda (x_1 ... x_n)
-           e) e_1 ... e_n)
-\end{schemedisplay}
-We unfold this characterization of \scheme'let' to guide the construction of $\mathcal{C}$ before simplifying.
-[Drop everything after ``with application.''?]
-
-To achieve \scheme'if' and conditionals as well as list primitives \scheme'cons', \scheme'snd', and \scheme'nil', we use the Church encodings of fig. \ref{church-encodings}.
+Now, to address the absence of \scheme'let', \scheme'if', \scheme'cons', etc. from \lv: We can express the \scheme'let' construct in \lv\ with application. To achieve \scheme'if' and conditionals as well as list primitives \scheme'cons', \scheme'snd', and \scheme'nil', we use the Church encodings of fig. \ref{church-encodings}.
 
 \subsection{Initiation}
 
-Abstracting terms has the effect of suspending evaluation. When an entire program is transformed, all evaluation is suspended, and awaits arguments representing contextual information. At the top level, the context is empty, so we pass the contextual information for the empty context: \scheme'FALSE', indicating evaluation is \emph{not} occurring in \scheme'wcm' tail position and \scheme'NIL', an empty list of marks.
+In our call-by-value language, abstracting terms has the effect of suspending evaluation. When an entire program is transformed, all evaluation is suspended, awaiting arguments representing contextual information. At the top level, the context is empty, so we pass the contextual information for the empty context: \scheme'FALSE', indicating evaluation is \emph{not} occurring in \scheme'wcm' tail position, and \scheme'NIL', an empty list of marks.
 
 We can accommodate this by defining a top-level transform $\hat{\mathcal{C}}$ in terms of $\mathcal{C}$ by
 \begin{equation}
 \Ch{p}=\app{\app{\C{p}}{\false}}{\nil}
 \end{equation}
-
-and stating our commutativity property as
+This changes our commutativity property somewhat, since applying $\hat{\mathcal{C}}$ to a value--say, the result of $\mathrm{eval}_{cm}$--will instigate further, if benign, reduction. In light of this, we must alter our statement about commutativity to reflect that we no longer guarantee term equality, but term equivalence, in the sense that they share a normal form (or lack of one).
+We can state this modified property as
 \begin{equation}
 \label{commutativity-property}
-\Ch{\evalcm{p}}=\evalv{\Ch{p}}
+\Ch{\evalcm{p}}\equiv\evalv{\Ch{p}}
 \end{equation}
-which is equivalent to
+which, expanded, is
 \begin{equation}
-\app{\app{\C{\evalcm{p}}}{\false}}{\nil}=\evalv{\app{\app{\C{p}}{\false}}{\nil}}
+\app{\app{\C{\evalcm{p}}}{\false}}{\nil}\equiv\evalv{\app{\app{\C{p}}{\false}}{\nil}}
 \end{equation}
 
 \subsection{Some Final Subtleties}
@@ -467,7 +452,6 @@ and we adjust $\hat{\mathcal{C}}$ so that
 
 Finally, we present the definition of $\mathcal{C}$ over the five syntactic forms of \cm.
 
-
 \begin{schemedefn}{\scheme|C[(rator-expr rand-expr)]|}
 
 The formal transformation of application follows the \scheme'let' version exactly except the definitions of \scheme'rator-value' and \scheme'rand-value' are folded directly in.
@@ -483,12 +467,12 @@ The formal transformation of application follows the \scheme'let' version exactl
 
 \begin{schemedefn}{\scheme|C[(wcm mark-expr body-expr)]|}
 
-The formal transformation of a \scheme'wcm' directive is also extremely similar to the \scheme'let' version. The definition of \scheme'C[cons]' is unfolded and simplified.
+The formal transformation of a \scheme'wcm' directive is also extremely similar to the \scheme'let' version. The Church-encoded conditional eagerly evaluates both branches, but this still achieves correct behavior.
 \begin{schemedisplay}
 (lambda (flag)
   (lambda (marks)
     ((C[body-expr] TRUE)
-     (((lambda (mark-value) (lambda (rest-marks) Cp[((CONS mark-value) rest-marks)])))
+     (((lambda (mark-value) (lambda (rest-marks) Ch[((CONS mark-value) rest-marks)]))
        ((C[mark-expr] FALSE) marks))
       ((flag Ch[(SND marks)]) marks)))))
 \end{schemedisplay}
@@ -556,8 +540,8 @@ We present a continuation mark transformation integrated in CPS.
       (((Ccps[mark-expr]
           (lambda (mark-value) 
             ((lambda (rest-marks) 
-               (((Ccps[body-expr] kont) TRUE) Cp[((CONS mark-value) rest-marks)])))
-             ((flag Ch_cps[(SND marks)]) marks))))
+               (((Ccps[body-expr] kont) TRUE) Chcps[((CONS mark-value) rest-marks)]))
+             ((flag Chcps[(SND marks)]) marks))))
         FALSE)
        marks))))
 \end{schemedisplay}
@@ -572,6 +556,8 @@ We present a continuation mark transformation integrated in CPS.
 \end{schemedisplay}
 \end{schemedefn}
 
+\noindent
+\begin{minipage}{0.5\linewidth}
 \begin{schemedefn}{\scheme|Ccps[v]|=\scheme|Ccps[(lambda (x) e)]|}
 \begin{schemedisplay}
 (lambda (kont)
@@ -580,7 +566,8 @@ We present a continuation mark transformation integrated in CPS.
       (kont (lambda (x) Ccps[e])))))
 \end{schemedisplay}
 \end{schemedefn}
-
+\end{minipage}
+\begin{minipage}{0.5\linewidth}
 \begin{schemedefn}{\scheme|Ccps[x]|}
 \begin{schemedisplay}
 (lambda (kont)
@@ -589,24 +576,32 @@ We present a continuation mark transformation integrated in CPS.
       (kont x))))
 \end{schemedisplay}
 \end{schemedefn}
+\end{minipage}
+\\
+\\
 
 We include corresponding definitions for $\mathcal{C}'$ and $\hat{\mathcal{C}}$.
-
+\\
+\\
+\noindent
+\begin{minipage}{0.5\linewidth}
 \begin{schemedefn}{\scheme|Cpcps[(lambda (x) e)]|}
 \begin{schemedisplay}
 (lambda (x) Ccps[e])
 \end{schemedisplay}
 \end{schemedefn}
-
+\end{minipage}
+\begin{minipage}{0.5\linewidth}
 \begin{schemedefn}{\scheme|Chcps[p]|}
 \begin{schemedisplay}
 (((Ccps[p] (lambda (x) x)) FALSE) Cpcps[nil])
 \end{schemedisplay}
 \end{schemedefn}
+\end{minipage}
 
 \subsection{Example}
 
-Consider the \cm\ program \scheme|(wcm 0 ((lambda (x) (wcm x (ccm))) 1))| which reduces as
+To better illustrate what the transformation does, we step through the reduction of a program which exhibits its more interesting aspects. One \cm\ program suited to this purpose is \scheme|(wcm 0 ((lambda (x) (wcm x (ccm))) 1))|. It reduces according to \cm\ semantics as
 \begin{schemedisplay}
 (wcm 0 ((lambda (x) (wcm x (ccm))) 1))
 (wcm 0 (wcm 1 (ccm)))
@@ -614,88 +609,58 @@ Consider the \cm\ program \scheme|(wcm 0 ((lambda (x) (wcm x (ccm))) 1))| which 
 (wcm 1 (lambda (z) ((z 1) (lambda (x) (lambda (y) y)))))
 (lambda (z) ((z 1) (lambda (x) (lambda (y) y))))
 \end{schemedisplay}
-and transforms as
+
+Now consider the reduction of the same program transformed. We apply the transformation just-in-time as we reduce to prevent term size explosion and promote clarity and omit uninteresting reductions.
 \begin{schemedisplay}
 Ch[(wcm 0 ((lambda (x) (wcm x (ccm))) 1))]
+\end{schemedisplay}
 
+By definition this is
+\begin{schemedisplay}
 ((C[(wcm 0 ((lambda (x) (wcm x (ccm))) 1))] FALSE) Cp[NIL])
-
+\end{schemedisplay}
+which explodes upon expansion to
+\begin{schemedisplay}
 (((lambda (flag)
     (lambda (marks)
       ((C[((lambda (x) (wcm x (ccm))) 1)] TRUE)
        (((lambda (mark-value) (lambda (rest-marks) Cp[((CONS mark-value) rest-marks)]))
          ((C[0] FALSE) marks)) ((flag Ch[(SND marks)]) marks)))))
   FALSE) Cp[NIL])
+\end{schemedisplay}
 
-((lambda (marks)
-   ((C[((lambda (x) (wcm x (ccm))) 1)] TRUE)
-    (((lambda (mark-value) (lambda (rest-marks) Cp[((CONS mark-value) rest-marks)]))
-      ((C[0] FALSE) marks)) ((FALSE Ch[(SND marks)]) marks))))
- Cp[NIL])
-
+After the application of contextual information, we reach
+\begin{schemedisplay}
 ((C[((lambda (x) (wcm x (ccm))) 1)] TRUE)
  (((lambda (mark-value) (lambda (rest-marks) Cp[((CONS mark-value) rest-marks)]))
    ((C[0] FALSE) Cp[NIL])) ((FALSE Ch[(SND NIL)]) Cp[NIL])))
-
-((C[((lambda (x) (wcm x (ccm))) 1)] TRUE)
- (((lambda (mark-value) (lambda (rest-marks) Cp[((CONS mark-value) rest-marks)]))
-   (((lambda (flag) (lambda (marks) 0)) FALSE) Cp[NIL])) ((FALSE Ch[(SND NIL)]) Cp[NIL])))
-
-((C[((lambda (x) (wcm x (ccm))) 1)] TRUE)
- (((lambda (mark-value) (lambda (rest-marks) Cp[((CONS mark-value) rest-marks)]))
-   ((lambda (marks) 0) Cp[NIL])) ((FALSE Ch[(SND NIL)]) Cp[NIL])))
-
-((C[((lambda (x) (wcm x (ccm))) 1)] TRUE)
- (((lambda (mark-value) (lambda (rest-marks) Cp[((CONS mark-value) rest-marks)]))
-   0) ((FALSE Ch[(SND NIL)]) Cp[NIL])))
-
-((C[((lambda (x) (wcm x (ccm))) 1)] TRUE)
- ((lambda (rest-marks) Cp[((CONS 0) rest-marks)])
-  ((FALSE Ch[(SND NIL)]) Cp[NIL])))
-
-((C[((lambda (x) (wcm x (ccm))) 1)] TRUE)
- ((lambda (rest-marks) Cp[((CONS 0) rest-marks)])
-  Cp[NIL]))
-
+\end{schemedisplay}
+the transformation of the \scheme'wcm' body. Terms within are arranged so that correct evaluation occurs within the native call-by-value regime. This evaluates \scheme'mark-expr' and and prepends its value to the list of continuation marks before proceeding with evaluation of \scheme'body-expr'. This reduction soon yields the following term:
+\begin{schemedisplay}
 ((C[((lambda (x) (wcm x (ccm))) 1)] TRUE) Cp[((CONS 0) NIL)])
-
+\end{schemedisplay}
+It is evident that this term will behave exactly as a top-level term except as this contextual information influences it, and this is exactly the property we have strived for. Expansion of this term yields
+\begin{schemedisplay}
 (((lambda (flag)
     (lambda (marks)
       (((((C[(lambda (x) (wcm x (ccm)))] FALSE) marks)
          ((C[1] FALSE) marks))
         flag)
        marks))) TRUE) Cp[((CONS 0) NIL)])
-
-(((((C[(lambda (x) (wcm x (ccm)))] FALSE) Cp[((CONS 0) NIL)])
-   ((C[1] FALSE) Cp[((CONS 0) NIL)]))
-  TRUE) Cp[((CONS 0) NIL)])
-
-((((((lambda (flag) (lambda (marks) (lambda (x) C[(wcm x (ccm))]))) FALSE) Cp[((CONS 0) NIL)])
-   ((C[1] FALSE) Cp[((CONS 0) NIL)]))
-  TRUE) Cp[((CONS 0) NIL)])
-
-(((((lambda (marks) (lambda (x) C[(wcm x (ccm))])) Cp[((CONS 0) NIL)])
-   ((C[1] FALSE) Cp[((CONS 0) NIL)]))
-  TRUE) Cp[((CONS 0) NIL)])
-
-((((lambda (x) C[(wcm x (ccm))])
-   ((C[1] FALSE) Cp[((CONS 0) NIL)]))
-  TRUE) Cp[((CONS 0) NIL)])
-
-((((lambda (x) C[(wcm x (ccm))])
-   (((lambda (flag) (lambda (marks) 1)) FALSE) Cp[((CONS 0) NIL)]))
-  TRUE) Cp[((CONS 0) NIL)])
-
-((((lambda (x) C[(wcm x (ccm))])
-   ((lambda (marks) 1) Cp[((CONS 0) NIL)]))
-  TRUE) Cp[((CONS 0) NIL)])
-
+\end{schemedisplay}
+the expansion of an application. In this example, both the operator and operand are values, so are essentially unaffected by the application of contextual information; this application has the effect of preparing the terms for application:
+\begin{schemedisplay}
 ((((lambda (x) C[(wcm x (ccm))])
    1) TRUE) Cp[((CONS 0) NIL)])
-
+\end{schemedisplay}
+reduces to
+\begin{schemedisplay}
 ((C[(wcm 1 (ccm))]
    TRUE) Cp[((CONS 0) NIL)])
+\end{schemedisplay}
 
+This expands and reduces as the \scheme'wcm' term seen previously:
+\begin{schemedisplay}
 (((lambda (flag)
     (lambda (marks)
       ((C[(ccm)] TRUE)
@@ -703,68 +668,31 @@ Ch[(wcm 0 ((lambda (x) (wcm x (ccm))) 1))]
          ((C[1] FALSE) marks))
         ((flag Ch[(SND marks)]) marks)))))
   TRUE) Cp[((CONS 0) NIL)])
+\end{schemedisplay}
 
-((lambda (marks)
-   ((C[(ccm)] TRUE)
-    (((lambda (mark-value) (lambda (rest-marks) Cp[((CONS mark-value) rest-marks)]))
-      ((C[1] FALSE) marks))
-     ((TRUE Ch[(SND marks)]) marks))))
- Cp[((CONS 0) NIL)])
-
-((C[(ccm)] TRUE)
- (((lambda (mark-value) (lambda (rest-marks) Cp[((CONS mark-value) rest-marks)]))
-   ((C[1] FALSE) Cp[((CONS 0) NIL)]))
-  ((TRUE Ch[(SND ((CONS 0) NIL))]) Cp[((CONS 0) NIL)])))
-
-(((lambda (flag) (lambda (marks) marks))
-  TRUE)
- (((lambda (mark-value) (lambda (rest-marks) Cp[((CONS mark-value) rest-marks)]))
-   ((C[1] FALSE) Cp[((CONS 0) NIL)]))
-  ((TRUE Ch[(SND ((CONS 0) NIL))]) Cp[((CONS 0) NIL)])))
-
-((lambda (marks) marks)
- (((lambda (mark-value) (lambda (rest-marks) Cp[((CONS mark-value) rest-marks)]))
-   ((C[1] FALSE) Cp[((CONS 0) NIL)]))
-  ((TRUE Ch[(SND ((CONS 0) NIL))]) Cp[((CONS 0) NIL)])))
-
-((lambda (marks) marks)
- (((lambda (mark-value) (lambda (rest-marks) Cp[((CONS mark-value) rest-marks)]))
-   (((lambda (flag) (lambda (marks) 1)) FALSE) Cp[((CONS 0) NIL)]))
-  ((TRUE Ch[(SND ((CONS 0) NIL))]) Cp[((CONS 0) NIL)])))
-
-((lambda (marks) marks)
- (((lambda (mark-value) (lambda (rest-marks) Cp[((CONS mark-value) rest-marks)]))
-   ((lambda (marks) 1) Cp[((CONS 0) NIL)]))
-  ((TRUE Ch[(SND ((CONS 0) NIL))]) Cp[((CONS 0) NIL)])))
-
-((lambda (marks) marks)
- (((lambda (mark-value) (lambda (rest-marks) Cp[((CONS mark-value) rest-marks)]))
-   1)
-  ((TRUE Ch[(SND ((CONS 0) NIL))]) Cp[((CONS 0) NIL)])))
-
+Of interest in this process is the effective collapse of the previous \scheme'mark' context by virtue of the value of \scheme'flag'. When we reach
+\begin{schemedisplay}
 ((lambda (marks) marks)
  ((lambda (rest-marks) Cp[((CONS 1) rest-marks)])
   ((TRUE Ch[(SND ((CONS 0) NIL))]) Cp[((CONS 0) NIL)])))
-
+\end{schemedisplay}
+the list is beheaded to simulate mark overwriting:
+\begin{schemedisplay}
 ((lambda (marks) marks)
  ((lambda (rest-marks) Cp[((CONS 1) rest-marks)])
   Ch[(SND ((CONS 0) NIL))]))
-
-((lambda (marks) marks)
- ((lambda (rest-marks) Cp[((CONS 1) rest-marks)])
-  Cp[NIL]))
-
-((lambda (marks) marks)
- Cp[((CONS 1) NIL)])
-
-Cp[((CONS 1) NIL)]
 \end{schemedisplay}
 
-[This example is way too long. Are trivial examples generally uninteresting?]
-
-% TODO
-%fix conclusion
-
+Once given the contextual information, the evaluation of \scheme'ccm' is simple:
+\begin{schemedisplay}
+((lambda (marks) marks)
+ Cp[((CONS 1) NIL)])
+\end{schemedisplay}
+reduces to
+\begin{schemedisplay}
+Cp[((CONS 1) NIL)]
+\end{schemedisplay}
+and we are left with just what we hoped for.
 
 \section{Testing}
 \label{sec-testing}
@@ -799,32 +727,34 @@ Redex provides convenient functions to initiate random testing.
 \section{Proof}
 \label{sec-proof}
 
-With a reasonable intuition and definitions hardened by random testing, we prove correctness.
+With a reasonable intuition and definitions hardened by random testing, we prove correctness of the continuation-passing variant of the transform, $\mathcal{C}_{\mathrm{cps}}$.
 
-We have discovered a truly marvelous proof of this, which this paper is too short to contain.
-
-We offer a sketch of the proof here.
+Because of space limitations, we offer only a sketch of the proof here. The full proof can be found in a technical report\footnote{\texttt{http://students.cs.byu.edu/\textasciitilde{}krgerman/esop2013-technical-report.pdf}}.
 
 We begin by expressing the commutativity property we have sought to preserve as a theorem:
 
-%\spnewtheorem*{maintheoremeu}{Correctness of $\hat{\mathcal{C}}$}{a}{x}
 \begin{theorem}
-For all programs $p\in\lambda_{cm}$, $\Ch{\mathrm{eval}_{cm}(p)}=\mathrm{eval}_{v}(\Ch{p})$.
+For all programs $p\in\lambda_{cm}$, $\Chcps{\mathrm{eval}_{cm}(p)}=\mathrm{eval}_{v}(\Chcps{p})$.
 \end{theorem}
 
-We do this by overloading $\mathcal{C}$ to accommodate contexts which allows us to formally relate $E[e]$ and $\C{E[e]}$.
-
-This in turn allows us to express the following lemmas.
-
-\begin{lemma}
-For all contexts $E$ and terms $e$, $E[e]\cmrrs v\implies\C{E[e]}\lvrrs\Cp{v}$.
+We prove this by overloading $\mathcal{C}_{\mathrm{cps}}$ to accommodate first evaluation contexts and then context-term pairs (denoted in unorthodox style) by
+\begin{schemedefn}{\scheme|Ccps[E[e]]|}
+\begin{schemedisplay}
+(((Ccps[e] Ccps[E]) xiE) Cpcps[chiE])
+\end{schemedisplay}
+\end{schemedefn}
+\noindent
+which allows us to formally relate $E[e]$ and $\Ccps{E[e]}$. We then prove a lemma
+\begin{lemma}[Simulation]
+For all contexts $E\in\lambda_{cm}$ and expressions $e\in\lambda_{cm}$, $E[e]\cmrr E'[e']\implies\C{E[e]}\lvrrs\C{E'[e']}$
+\end{lemma}
+by induction over contexts $E$ and terms $e$. This lemma justifies the evolution of the evaluation context and each rule in the reduction relation except rule \ref{reduction}. We express this with
+\begin{lemma}[Substitution]
+\label{lem:substitution}
+For all $e,x,v\in\lambda_{cm}$, $\C{e[x\leftarrow v]}=\C{e}[x\leftarrow \Cp{v}]$.
 \end{lemma}
 
-To accomplish this, we first prove by structural induction that for all terms $e$ and context $E$ arbitrary but fixed, $E[e]\cmrrs E[v]\implies\C{E[e]}\lvrrs\C{E[v]}$. 
-
-We then prove that for all contexts $E$, $E[v]\cmrrs v'\implies\C{E[v]}\lvrrs\Cp{v'}$.
-
-The theorem follows.
+With these lemmas, the theorem follows quickly.
 
 \section{Back to JavaScript}
 \label{sec-javascript}
@@ -833,10 +763,10 @@ With a correct transformation of continuation marks defined over the \lc, little
 
 We add two keywords to manipulate continuation marks: the familiar \texttt{wcm} and \texttt{ccm}. We chose block syntax for \texttt{wcm} to convey that it is a special form, like a conditional, instead of a function-like interface. A lone \texttt{ccm} evaluates to the current continuation marks.
 
-Tail-call elimination is not part of the JavaScript specification which complicates the treatment of the tail-call behavior. We have chosen to perform a simple static analysis which determines if the recursive call is in tail position. We simulate proper tail-call behavior by statically assigning the value of the flag to reflect this.
+Tail-call elimination is not part of the JavaScript specification which complicates the treatment of the tail-call behavior. We simulate proper tail-call behavior by using the flag to encode whether a function call is in tail position.
 
 A properly-recursive factorial can be implemented in this JavaScript extension as
-\begin{verbatim}
+\begin{lstlisting}[language=C,morekeywords={var,function,wcm,ccm,true,false}]
 var fac = function( n ) {
   if( n == 0 ) {
     console.log( ccm );
@@ -847,10 +777,10 @@ var fac = function( n ) {
                { n * fac( n - 1 ) };
   }
 }
-\end{verbatim}
+\end{lstlisting}
 
-A transformation of this function desugars these constructs into vanilla JavaScript, leveraging native arrays for lists of continuation marks.
-\begin{verbatim}
+A direct-style transformation of this function desugars these constructs into vanilla JavaScript, leveraging native arrays for lists of continuation marks.
+\begin{lstlisting}[language=C,morekeywords={var,function,wcm,ccm,true,false}]
 var fac = function( flag, marks ) {
   return function( n ) {
     if( n == 0 ) {
@@ -866,17 +796,17 @@ var fac = function( flag, marks ) {
     }
   }
 }
-\end{verbatim}
+\end{lstlisting}
 
 As expected, the output of a manual initiation of this function is
-\begin{verbatim}
+\begin{lstlisting}[language=C,morekeywords={var,function,wcm,ccm,true,false}]
 > fac( false, [] )( 5 )
 [ 1, 2, 3, 4, 5 ]
 120
-\end{verbatim}
+\end{lstlisting}
 
 A tail-recursive factorial is expressible in this extension as
-\begin{verbatim}
+\begin{lstlisting}[language=C,morekeywords={var,function,wcm,ccm,true,false}]
 var fac = function( n, acc ) {
   if( n == 0 ) {
     console.log( ccm );
@@ -887,9 +817,9 @@ var fac = function( n, acc ) {
                { fac( n - 1, n * acc ) };
   }
 }
-\end{verbatim}
+\end{lstlisting}
 and transforms to
-\begin{verbatim}
+\begin{lstlisting}[language=C,morekeywords={var,function,wcm,ccm,true,false}]
 var fac = function( flag, marks ) {
   return function( n, acc ) {
     if( n == 0 ) {
@@ -905,29 +835,30 @@ var fac = function( flag, marks ) {
     }
   }
 }
-\end{verbatim}
+\end{lstlisting}
 
 The output of a manual initiation of this function is
-\begin{verbatim}
+\begin{lstlisting}[language=C,morekeywords={var,function,wcm,ccm,true,false}]
 > fac( false, [] )( 5, 1 )
 [ 1 ]
 120
-\end{verbatim}
+\end{lstlisting}
 
+In this example, the API to compute factorials has changed, but the change is localized. With top-level control of a program, we can transform the relevant part of the system, leaving the rest the same. This preserves interoperability with foreign functions, i.e., third-party JavaScript libraries.
+ 
 \section{Related Work}
 
-Monads, introduced by Moggi \cite{moggi1989computational}, are another way to model semantics. Their appeal is significant: they allow one to implement a particular model of computation with with a pure computational logic, such as the \lc. Ager et al. \cite{ager2003functional} implemented a stack-inspection monad in terms of a lifted state monad, but the size of the continuation must be managed by hand within.
+Monads, introduced by Moggi \cite{moggi1989computational}, are another way to model semantics. Their appeal is significant: they allow one to implement a particular model of computation with with a pure computational logic, such as the \lc.
 
 Expressing continuation marks in a monadic way is simple enough. In Haskell,
-\begin{verbatim}
-module CM where
-import Control.Monad
-
+\begin{minipage}{\linewidth}
+\begin{lstlisting}[language=Haskell]
 data CM m a = CM ((Bool,[m]) -> a)
 
 instance Monad (CM m) where
   return x = CM (\_ -> x)
-  (CM m) >>= f = CM (\(flag,vs) -> let (CM m') = f (m (False,vs)) in m' (flag,vs))
+  (CM m) >>= f = CM (\(flag,vs) ->
+      let (CM m') = f (m (False,vs)) in m' (flag,vs))
 
 wcm :: m -> CM m a -> CM m a
 wcm v (CM m) = CM (\(f,vs) -> m (True, v:(if f then (tail vs) else vs)))
@@ -937,47 +868,17 @@ ccm = CM (\(_,vs) -> vs)
 
 runCM :: CM m a -> a
 runCM (CM m) = m (False,[])
-\end{verbatim}
+\end{lstlisting}
+\end{minipage}
+is one way, using our approach. The factorial functions leveraging this implementation exhibit the correct continuation mark behavior but this is \emph{not} a monad. Specifically, the right identity law, \texttt{{\color{gray}m} >>= {\color{RoyalBlue}return} = {\color{gray}m}}, does not hold since \texttt{{\color{gray}CM}} conceptually adds a stack frame in bind (\texttt{>>=}). Ager et al. \cite{ager2003functional} implemented a similar stack-inspection monad in terms of a lifted state monad, but resorted to manual management of the stack frames.
 
-\begin{verbatim}
-module Main where
-import CM
+\section{Conclusion and Future Work}
 
-fac :: Int -> CM Int (Int,[Int])
-fac 0 = do
-  vs <- ccm;
-  return (1,vs)
+Continuation marks support a bevy of instrumentation tools and advanced language features in a generalized, portable way. Despite their demonstrated utility, they have not yet found their way into most languages. A verified characterization of continuation marks in a pure computational language provides implementors of higher-order languages a correct compiler for continuation marks which we have demonstrated for JavaScript.
 
-fac n = do
-  (acc,vs) <- wcm n (fac (n - 1));
-  return (n * acc,vs)
-
-fac_tr :: Int -> Int -> CM Int (Int,[Int])
-fac_tr 0 acc = do
-  vs <- ccm;
-  return (acc,vs)
-
-fac_tr n acc = wcm n (fac_tr (n - 1) (n * acc))
-
-main = do
-  print $ runCM (fac 5);
-  print $ runCM (fac_tr 5 1)
-\end{verbatim}
-
-\begin{verbatim}
-(120,[1,2,3,4,5])
-(120,[1])
-\end{verbatim}
-[Say more with less.]
-
-
-\section{Future Work}
+Our macro-style approach would be more useful if deployed as a proper macro, but this requires a hygienic macro system which many languages lack. \texttt{sweet.js} is just such a system for JavaScript in early stages and is ideal for our transformation.
 
 Although we used some level of mechanization in the proof of the theorem, a formal proof assistant, such as Coq \cite{barras1997coq}, would increase confidence out of the gate that the transformation was correct.
-
-\section{Conclusion}
-
-Continuation marks support a bevy of instrumentation tools and advanced language features in a generalized, portable way. Despite their demonstrated utility, they have not yet found their way into most languages. A verified characterization of continuation marks in a pure computational language provides implementors of higher-order languages a correct compiler for continuation marks.
 
 \bibliographystyle{plain}
 \bibliography{paper}
