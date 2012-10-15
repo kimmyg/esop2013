@@ -108,7 +108,7 @@ Finally, we define ``filling the hole'', the insertion of a value in the context
 With each significant step of native evaluation formally related with the transformation, we can express a simulation lemma.
 
 \begin{lemma}[Simulation]
-For all contexts $E\in\lambda_{cm}$ and expressions $e\in\lambda_{cm}$, $E[e]\cmrr E'[e']\implies\C{E[e]}\lvrrs\C{E'[e']}$
+For all contexts $E\in\lambda_{cm}$ and expressions $e\in\lambda_{cm}$, $E[e]\cmrr E'[e']\implies\Ccps{E[e]}\lvrrs\Ccps{E'[e']}$
 \end{lemma}
 
 We will reason by structural induction on both contexts $E$ and terms $e$. Instead of
@@ -158,19 +158,23 @@ Otherwise, $\Ccps{E'[\wcm{\hole}{e_1}][v_0]}\lvrrs\Ccps{E'[\wcm{v_0}{\hole}][e_1
 By definition, $\Ccps{E[v_1]}=\Ccps{E'[v_1]}$.
 \end{proof}
 
-\begin{corollary}
-\label{cor:great}
-For all contexts $E$ and terms $e\in\lambda_{cm}$, if $E[e]\cmrrs v$, then $\C{E[e]}\lvrrs\Cp{v}$.
-\end{corollary}
+\begin{lemma}
+\label{lem:great}
+For all contexts $E$ and terms $e\in\lambda_{cm}$, if $E[e]\cmrrs v$, then $\Ccps{E[e]}\lvrrs\Cpcps{v}$.
+\end{lemma}
 
 \begin{proof}
 %Let $E\in\lambda_{cm}$ and $e\in\lambda_{cm}$ be arbitrary.
-By simulation.
+If $E[e]\cmrrs v$, then $E[e]\cmrrs\hole[v]\cmrr v$.
+
+By simulation, $E[e]\cmrrs\hole[v]\implies\Ccps{E[e]}\lvrrs\Ccps{\hole[v]}$.
+
+By definition, $\Ccps{\hole[v]}=\app{\app{\app{\Ccps{v}}{\Ccps{\hole}}}{\xi(\hole)}}{\Cpcps{\chi(\hole)}}\lvrrs\Cpcps{v}$, which is what we sought.
 \end{proof}
 
 %\newtheorem{maintheorem}{Correctness of $\hat{\mathcal{C}}$}
-\begin{theorem}
-For all programs $p\in\lambda_{cm}$, $\Chcps{\mathrm{eval}_{cm}(p)}=\mathrm{eval}_{v}(\Chcps{p})$.
+\begin{theorem}[Correctness of $\mathcal{C}_{\mathrm{cps}}$]
+For all programs $p\in\lambda_{cm}$, $\Chcps{\mathrm{eval}_{cm}(p)}\equiv\mathrm{eval}_{v}(\Chcps{p})$.
 \end{theorem}
 
 \begin{proof}
@@ -183,7 +187,7 @@ p\cmrrs v &\implies\mathrm{eval}_{cm}(p)=v &\text{by definition of $\mathrm{eval
 
 \begin{align*}
 p\cmrrs v &\implies\hole[p]\cmrrs v &\text{(since $p\cmrr\hole[p]$)}\\
-          &\implies\C{\hole[p]}\lvrrs\Cp{v} &\text{(by corollary \ref{cor:great})}\\
+          &\implies\C{\hole[p]}\lvrrs\Cp{v} &\text{(by lemma \ref{lem:great})}\\
           &\implies\app{\app{\app{\C{p}}{\C{\hole}}}{\xi(\hole)}}{\Cp{\chi(\hole)}}\lvrrs\C{v}&\text{by definition of $\mathcal{C}$}\\
           &\implies\Ch{p}\lvrrs\C{v}&\text{(by definition of $\hat{\mathcal{C}}$)}\\
           &\implies\mathrm{eval}_{v}(\Ch{p})=\Cp{v} &\text{(by definition of $\mathrm{eval}_v$)}
