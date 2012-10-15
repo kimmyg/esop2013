@@ -1,1 +1,193 @@
-../BYU-CS-MS/dissertation/proof.tex
+\chapter{Proof}
+
+% TODO
+% make overline show up in mechanized proof and definitions, where necessary
+% label mechanized proof better
+% justify each semantic rule with a lemma
+% label transition steps
+% make beta appear in Redex stuff
+% make sure the paper with Jay's suggestions is satisfied
+
+The evaluation of a \cm\ program proceeds with the evolution of an evaluation context and possibly reducible expression. When evaluation begins, the evaluation context is merely \scheme'hole', a placeholder for the eventual result, and the reducible expression, or redex, is the program itself. The evaluation of arguments--both in application and continuation mark forms--defers evaluation of the expression at hand by storing its evaluation context and evaluating subterms. As these results are applied and evaluation continues, the size of the context fluctuates until finally, if the program terminates, we are left with a single value to plug in \scheme'hole'. This value is the value of the program.
+
+The state of evaluation at any given point can be encapsulated by a pair of an evaluation context $E$ and an expression $e$ which we write in unorthodox style as $E[e]$. In order to prove that evaluation in the transformation corresponds to native evaluation, we must relate this state with its corresponding transformation.
+
+We do this by overloading $\mathcal{C}_{\mathrm{cps}}$ to accommodate evaluation contexts which allows us to formally relate $E[e]$ and $\Ccps{E[e]}$. We first define
+\begin{definition}
+\[
+\xi(E)=\begin{cases}
+\mathbf{true} &\text{if $E=E'[\wcm{v'}{\hole}]$ for some $E'$ and $v'$}\\
+\mathbf{false} &\text{otherwise}
+\end{cases}
+\]
+\end{definition}
+\noindent
+to denote the \scheme'flags' argument and assume that the \scheme'marks' argument is \scheme|Cpcps[chiE]|. We can now define $\mathcal{C}_{\mathrm{cps}}$ over contexts $E\in\lambda_{cm}$:
+
+\begin{schemedefinition}{\scheme|Ccps[hole]|}
+\begin{schemeblock}
+\begin{schemedisplay}
+(lambda (value)
+  value)
+\end{schemedisplay}
+\end{schemeblock}
+\end{schemedefinition}
+
+\begin{schemedefinition}{\scheme|Ccps[E[(hole rand-value)]]|}
+\begin{schemeblock}
+\begin{schemedisplay}
+(lambda (rator-value)
+  (((Ccps[rand-expr]
+     (lambda (rand-value)
+       ((((rator-value rand-value) Ccps[E]) xiE) Cpcps[chiE])))
+    FALSE)
+  Cpcps[chiE]))
+\end{schemedisplay}
+\end{schemeblock}
+\end{schemedefinition}
+
+\begin{schemedefinition}{\scheme|Ccps[E[(v_0 hole)]]|}
+\begin{schemeblock}
+\begin{schemedisplay}
+(lambda (rand-value)
+  ((((v_0 rand-value) Ccps[E]) xiE) Cpcps[chiE]))
+\end{schemedisplay}
+\end{schemeblock}
+\end{schemedefinition}
+
+\begin{schemedefinition}{\scheme|Ccps[E[(wcm hole body-expr)]]|}
+\begin{schemeblock}
+\begin{schemedisplay}
+(lambda (mark-value) 
+  ((lambda (rest-marks) 
+      (((Ccps[body-expr] Ccps[E]) TRUE) Chcps[((CONS mark-value) rest-marks)]))
+    ((xiE Chcps[(SND chiE)]) Cpcps[chiE])))
+\end{schemedisplay}
+\end{schemeblock}
+\end{schemedefinition}
+
+\begin{schemedefinition}{\scheme|Ccps[E[(wcm v_0 hole)]]|}
+\begin{schemeblock}
+\begin{schemedisplay}
+Ccps[E]
+\end{schemedisplay}
+\end{schemeblock}
+\end{schemedefinition}
+
+This allows us to define $\mathcal{C}_{\mathrm{cps}}$ over a context-expression pair.
+
+\begin{schemedefinition}{\scheme|Ccps[E[e]]|}
+\begin{schemeblock}
+\begin{schemedisplay}
+(((Ccps[e] Ccps[E]) xiE) Cpcps[chiE])
+\end{schemedisplay}
+\end{schemeblock}
+\end{schemedefinition}
+
+From this definition, it is apparent that \scheme|Chcps[p]|=\scheme|(((Ccps[p] Ccps[hole]) XI(hole)) Cpcps[hole])|=\scheme|Ccps[hole[p]]|.
+
+Now we show that substitution is preserved by the transformation.
+
+\begin{lemma}[Substitution]
+\label{lem:substitution}
+For all $e,x,v\in\lambda_{cm}$, $\C{e[x\leftarrow v]}=\C{e}[x\leftarrow \Cp{v}]$.
+\end{lemma}
+
+See section \ref{app:substitution} for proof.
+
+Finally, we define ``filling the hole'', the insertion of a value in the context from which it came.
+
+\begin{schemedefinition}{\scheme|Ccps[E[v]]|}
+\begin{schemeblock}
+\begin{schemedisplay}
+(Ccps[E] Cpcps[v])
+\end{schemedisplay}
+\end{schemeblock}
+\end{schemedefinition}
+
+With each significant step of native evaluation formally related with the transformation, we can express a simulation lemma.
+
+\begin{lemma}[Simulation]
+For all contexts $E\in\lambda_{cm}$ and expressions $e\in\lambda_{cm}$, $E[e]\cmrr E'[e']\implies\C{E[e]}\lvrrs\C{E'[e']}$
+\end{lemma}
+
+We will reason by structural induction on both contexts $E$ and terms $e$. Instead of
+nesting the induction, which requires the consideration of $|E|\cdot|e|$ cases, we will
+take first $E$ and then $e$ in isolation, in each assuming the correctness of the other,
+which requires the consideration of only $|E|+|e|$ cases.
+
+First, we prove it holds for terms $e$. In each case, let $E$ be an arbitrary context.
+\begin{proof}{Case $e=\app{e_0}{e_1}$}
+By steps app1-app3, $\Ccps{E[\app{e_0}{e_1}]}\lvrrs\Ccps{E[\app{\hole}{e_1}][e_0]}$.
+\end{proof}
+\begin{proof}{Case $e=\wcm{e_0}{e_1}$}
+By steps wcm1-wcm3, $\Ccps{E[\wcm{e_0}{e_1}]}\lvrrs\Ccps{E[\wcm{\hole}{e_1}][e_0]}$.
+\end{proof}
+\begin{proof}{Case $e=\ccm$}
+By steps ccm1-ccm3, $\Ccps{E[\ccm]}\lvrrs\Ccps{E[\chi(E)]}$.
+\end{proof}
+\begin{proof}{Case $e=v_0$}
+By steps value1-value3, $\Ccps{E[v_0]}\lvrrs\Ccps{E[v_0]}$.
+\end{proof}
+\begin{proof}{Case $e=x$}
+By steps x1-x4, $\Ccps{E[x]}\lvrrs\Ccps{E[\mathrm{error}]}$.
+\end{proof}
+
+Now, we prove it holds for contexts $E$. In each case, let $v_0$ be an arbitrary value.
+\begin{proof}{Case $E=\hole$}
+This is identical to the case that $e=v_0$.
+\end{proof}
+
+\begin{proof}{Case $E=E'[\app{\hole}{e_1}]$}
+By step app4, $\Ccps{E[v_0]}\lvrr\Ccps{E'[\app{v_0}{\hole}][e_1]}$.
+\end{proof}
+
+\begin{proof}{Case $E=E'[\app{v_0}{\hole}]$}
+By step app5, $\Ccps{E[v_0]}\lvrr\Ccps{E'[\app{v_0}{v_1}]}$.
+
+By step app6 and lemma \ref{lem:substitution}, $\Ccps{E'[\app{v_0}{v_1}]}\lvrr\Ccps{E'[e']}$.
+\end{proof}
+
+\begin{proof}{Case $E=E'[\wcm{\hole}{e_1}]$}
+If $E'=E''[\wcm{v'}{\hole}$ for some $E''$ and $v'$, then $\Ccps{E'[\wcm{\hole}{e_1}][v_0]}\lvrrs\Ccps{E''[\wcm{v_0}{\hole}][e_1]}$ by steps wcm4tail-wcm6tail.
+
+Otherwise, $\Ccps{E'[\wcm{\hole}{e_1}][v_0]}\lvrrs\Ccps{E'[\wcm{v_0}{\hole}][e_1]}$ by steps wcm4nontail-wcm6nontail.
+\end{proof}
+
+\begin{proof}{Case $E=E'[\wcm{v_0}{\hole}]$}
+By definition, $\Ccps{E[v_1]}=\Ccps{E'[v_1]}$.
+\end{proof}
+
+\begin{corollary}
+\label{cor:great}
+For all contexts $E$ and terms $e\in\lambda_{cm}$, if $E[e]\cmrrs v$, then $\C{E[e]}\lvrrs\Cp{v}$.
+\end{corollary}
+
+\begin{proof}
+%Let $E\in\lambda_{cm}$ and $e\in\lambda_{cm}$ be arbitrary.
+By simulation.
+\end{proof}
+
+%\newtheorem{maintheorem}{Correctness of $\hat{\mathcal{C}}$}
+\begin{theorem}
+For all programs $p\in\lambda_{cm}$, $\Chcps{\mathrm{eval}_{cm}(p)}=\mathrm{eval}_{v}(\Chcps{p})$.
+\end{theorem}
+
+\begin{proof}
+
+\begin{align*}
+p\cmrrs v &\implies\mathrm{eval}_{cm}(p)=v &\text{by definition of $\mathrm{eval}_{cm}$}\\
+          &\implies\Ch{\mathrm{eval}_{cm}(p)}\lvrrs\Cp{v} &\text{by definition of $\hat{\mathcal{C}}$}\\
+          &\implies\Ch{\mathrm{eval}_{cm}(p)}\equiv\Cp{v} &\text{by definition of equivalency}\\
+\end{align*}
+
+\begin{align*}
+p\cmrrs v &\implies\hole[p]\cmrrs v &\text{(since $p\cmrr\hole[p]$)}\\
+          &\implies\C{\hole[p]}\lvrrs\Cp{v} &\text{(by corollary \ref{cor:great})}\\
+          &\implies\app{\app{\app{\C{p}}{\C{\hole}}}{\xi(\hole)}}{\Cp{\chi(\hole)}}\lvrrs\C{v}&\text{by definition of $\mathcal{C}$}\\
+          &\implies\Ch{p}\lvrrs\C{v}&\text{(by definition of $\hat{\mathcal{C}}$)}\\
+          &\implies\mathrm{eval}_{v}(\Ch{p})=\Cp{v} &\text{(by definition of $\mathrm{eval}_v$)}
+\end{align*}
+
+Therefore, $\C{\mathrm{eval}_{cm}(p)}\equiv\mathrm{eval}_{v}(\C{p})$.
+\end{proof}
