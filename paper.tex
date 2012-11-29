@@ -66,7 +66,7 @@ We present direct and CPS-like transformations from the call-by-value $\lambda$-
 
 \section{Introduction}
 
-Numerous programming language instruments rely on stack inspection to function. Statistical profilers sample the stack regularly to record active functions, algebraic steppers observe the stack to represent the evaluation context of an expression, and debuggers naturally require consistent access to the stack. In each of these scenarios, the instrument relies on implementation-specific information and must be maintained as the instrumented language undergoes optimizations and ventures across platforms. This makes these instruments brittle and increases the porting cost of the language ecosystem. Each would benefit from a generalized stack-inspection mechanism available within the instrumented language itself. If written in such an enhanced language, each instrument would be more robust, more easily modified, and would port for free.
+Numerous program instruments rely on stack inspection to function. Statistical profilers sample the stack regularly to record active functions, algebraic steppers observe the stack to represent the evaluation context of an expression, and debuggers naturally require consistent access to the stack. In each of these scenarios, the instrument relies on implementation-specific information and must be maintained as the instrumented language undergoes optimizations and ventures across platforms. This makes these instruments brittle and increases the porting cost of the language ecosystem. Each would benefit from a generalized stack-inspection mechanism available within the instrumented language itself. If written in such an enhanced language, each instrument would be more robust, more easily modified, and would port for free.
 
 Continuation marks \cite{clements2006portable} are a programming language feature which generalizes stack inspection. Not only do they dramatically simplify correct instrumentation \cite{clements2001modeling}, they have been used to allow inspection-based dynamic security checks in the presence of tail-call optimization \cite{clements2004tail}, to express aspect-oriented programming in higher-order languages \cite{tucker2003pointcuts}, and to implement a form of dynamic binding in parameters.
 
@@ -74,7 +74,7 @@ Continuation marks originated in PLT Scheme (now Racket \cite{plt-tr1}). However
 
 For example, the ubiquitous JavaScript is an ideal candidate for the addition of continuation marks. However, as the lingua franca of the web, it has numerous mature implementations which have been heavily optimized. To add continuation marks to JavaScript amounts to modifying each implementation upstream, to say nothing of amending the JavaScript standard. (Clements et al. successfully added continuation marks in Mozilla's Rhino compiler \cite{clements2008implementing}, but it remains a proof-of-concept.)
 
-To avoid this roadblock, we instead take a macro-style approach; that is, we enhance a core language with facilities to manipulate continuation marks and desugar the enhanced language back to the core. To make our desugaring transformation portable to other languages, we define it over the \lc, the common core of most higher-order languages. With such a transformation, language semanticists do not need to reconcile the feature with other features in the language (provided they have already done so with $\lambda$) and their compiler writers do not need to worry about complicating their implementations (for the same reason).
+To avoid this roadblock, we instead enhance a core language with facilities to manipulate continuation marks and desugar the enhanced language back to the core. To make our desugaring transformation portable to other languages, we define it over the \lc, the common core of most higher-order languages. With such a transformation, language semanticists do not need to reconcile the feature with other features in the language (provided they have already done so with $\lambda$) and their compiler writers do not need to worry about complicating their implementations (for the same reason).
 
 We begin by further explaining continuation marks in section \ref{sec-continuation-marks}. We then formalize them via the introduction of a core and enhanced language in section \ref{sec-core-and-extension}. We discuss the necessary properties of a meaningful transformation between these languages. We present two transformations of continuation marks--one direct and one CPS-like--to the call-by-value \lc\ in section \ref{sec-transformation}. This is followed by randomized testing using a lightweight mechanized model in section \ref{sec-testing} and a proof of a meaning-preservation theorem in section \ref{sec-proof}. We finally apply it to JavaScript in section \ref{sec-javascript}.
 
@@ -380,8 +380,8 @@ With this in mind, consider a conceptual transformation of application, \scheme|
 ignoring for the moment that \scheme'let' is in neither \lv\ or \cm. This definition captures that
 \begin{enumerate}
 \item before evaluation, we expect \scheme'flag' to indicate tail position information and \scheme'marks' to provide a list of the current continuation marks,
-\item we would like to evaluate \scheme'C[rator-expr]' and \scheme'C[rand-expr]' in the same manner, providing to each its contextual information--specifically that neither is evaluated in tail position of a \scheme'wcm' directive and the continuation marks for each are unchanged from the parent context,
-\item and, following evaluation of operator and operand and application, evaluation of the resultant term is performed with the original contextual information.
+\item we would like to evaluate \scheme'C[rator-expr]' and \scheme'C[rand-expr]' in the same manner, providing to each its contextual information--specifically that neither is evaluated in tail position of a \scheme'wcm' directive and the continuation marks for each are unchanged from the parent context, and
+\item following evaluation of operator and operand and application, evaluation of the resultant term is performed with the original contextual information.
 \end{enumerate}
 
 Now consider a conceptual transformation of a \scheme'wcm' directive, \scheme|C[(wcm mark-expr body-expr)]|, as
@@ -396,8 +396,8 @@ with similar caveats as the previous case. This definition captures that
 \begin{enumerate}
 \item as in application, we expect \scheme'flag' to indicate tail position information and \scheme'marks' to provide a list of the current continuation marks,
 \item we evaluate \scheme'mark-expr' with correct contextual information,
-\item we discard the first continuation mark of the parent context if evaluation is occurring in tail position of a \scheme'wcm' directive,
-\item and we evaluate \scheme'C[body-expr]' with the correct tail-position flag and current continuation marks.
+\item we discard the first continuation mark of the parent context if evaluation is occurring in tail position of a \scheme'wcm' directive, and
+\item we evaluate \scheme'C[body-expr]' with the correct tail-position flag and current continuation marks.
 \end{enumerate}
 
 Finally, consider the conceptual transformation of a \scheme'ccm' directive, \scheme|C[(ccm)]|, as
@@ -408,9 +408,10 @@ Finally, consider the conceptual transformation of a \scheme'ccm' directive, \sc
 \end{schemedisplay}
 wherein we reap the fruits of simplicity from our laborious passing: this definition is gratifyingly direct.
 
-The conceptual transformation of variables \scheme'x' and values \scheme'(lambda (x) e)' is straightforward.
+The conceptual transformation of variables \scheme'x' and values \scheme'(lambda (x) e)' is similar.
 
-Now, to address the absence of \scheme'let', \scheme'if', \scheme'cons', etc. from \lv: We can express the \scheme'let' construct in \lv\ with application. To achieve \scheme'if' and conditionals as well as list primitives \scheme'cons', \scheme'snd', and \scheme'nil', we use the Church encodings of fig. \ref{church-encodings}.
+Now, to address the absence of \scheme'let', \scheme'if', \scheme'cons', etc. from \lv: We can express the \scheme'let' construct in \lv\ with application. To achieve \scheme'if' and conditionals as well as list primitives \scheme'cons', \scheme'snd', and \scheme'nil', we use the Church encodings of fig. 1.
+%\ref{church-encodings}.
 
 \subsection{Initiation}
 
@@ -433,7 +434,9 @@ which, expanded, is
 
 \subsection{Some Final Subtleties}
 
-Our choice to keep the core language small by omitting lists as primitive values has the consequence of complicating our transform somewhat. Because lists are defined in terms of \lc\ values which are themselves touched by the transform and because of the commutativity property that $\mathcal{C}$ must satisfy, we cannot deal with a list of continuation marks directly--we must instead deal with a transformed list of transformed continuation marks, and manipulation of this list within transformed terms must occur at the transformed level.
+We have not added lists as primitive values to $\cm$ but instead encode lists with other terms in the language. By not relying on a particular characterization of lists in the target language, the dependencies of the transformation remain few, and thus widen its possible application. However, this makes lists themselves subject to the transformation which complicates their manifestation in the core language. The effect of this is that the transformation must deal with the list of continuation marks at the transformed level.
+
+%Our choice to keep the core language small by omitting lists as primitive values has the consequence of complicating our transform somewhat. Because lists are defined in terms of \lc\ values which are themselves touched by the transform and because of the commutativity property that $\mathcal{C}$ must satisfy, we cannot deal with a list of continuation marks directly--we must instead deal with a transformed list of transformed continuation marks, and manipulation of this list within transformed terms must occur at the transformed level.
 
 Additionally, after evaluation, values are ``truncated'' with their leading abstractions applied away. For instance, the transformation of the value \scheme|(lambda (x) x)| to \scheme|(lambda (flag) (lambda (marks) (lambda (x) (lambda (flag) (lambda (marks) x)))))| will yield, following evaluation, \scheme|(lambda (x) (lambda (flag) (lambda (marks) x)))|. For convenience, we define 
 \begin{equation}
@@ -467,7 +470,7 @@ The formal transformation of application follows the \scheme'let' version exactl
 
 \begin{schemedefn}{\scheme|C[(wcm mark-expr body-expr)]|}
 
-The formal transformation of a \scheme'wcm' directive is also extremely similar to the \scheme'let' version. The Church-encoded conditional eagerly evaluates both branches, but this still achieves correct behavior.
+The formal transformation of a \scheme'wcm' directive is also extremely similar to the \scheme'let' version. The Church-encoded conditional eagerly evaluates both branches, but this still achieves correct behavior, as \scheme'marks' is already a value and \scheme|(SND marks)| is benign, even if \scheme'marks' is \scheme'NIL'.
 \begin{schemedisplay}
 (lambda (flag)
   (lambda (marks)
@@ -511,7 +514,7 @@ Variables have the property that, when substitution occurs, they reconstitute tr
 
 \subsection{Definition of $\mathcal{C}$ in CPS}
 
-Many compilers transform source to continuation-passing style (CPS) in the compilation process. The use of CPS as an intermediate language enables a host of optimization analyses and makes the implementation of otherwise-heavyweight features trivial, such as first-class continuations \cite{appel2007compiling}.
+Some compilers transform source to continuation-passing style (CPS) in the compilation process. The use of CPS as an intermediate language enables a host of optimization analyses and makes the implementation of otherwise-heavyweight features trivial, such as first-class continuations \cite{appel2007compiling}.
 
 We present a continuation mark transformation integrated in CPS.
 
@@ -748,7 +751,7 @@ which allows us to formally relate $E[e]$ and $\Ccps{E[e]}$. We then prove a lem
 \begin{lemma}[Simulation]
 For all contexts $E\in\lambda_{cm}$ and expressions $e\in\lambda_{cm}$, $E[e]\cmrr E'[e']\implies\C{E[e]}\lvrrs\C{E'[e']}$
 \end{lemma}
-by induction over contexts $E$ and terms $e$. This lemma justifies the evolution of the evaluation context and each rule in the reduction relation except rule \ref{reduction}. We express this with
+by induction over contexts $E$ and terms $e$. This lemma justifies the evolution of the evaluation context and each rule in the reduction relation except rule \ref{reduction}. We preserve this rule with
 \begin{lemma}[Substitution]
 \label{lem:substitution}
 For all $e,x,v\in\lambda_{cm}$, $\C{e[x\leftarrow v]}=\C{e}[x\leftarrow \Cp{v}]$.
@@ -848,7 +851,7 @@ In this example, the API to compute factorials has changed, but the change is lo
  
 \section{Related Work}
 
-Monads, introduced by Moggi \cite{moggi1989computational}, are another way to model semantics. Their appeal is significant: they allow one to implement a particular model of computation with with a pure computational logic, such as the \lc.
+Monads, introduced by Moggi \cite{moggi1989computational}, are another way to model semantics. Their appeal is significant: they allow one to implement a particular model of computation with a pure computational logic, such as the \lc.
 
 Expressing continuation marks in a monadic way is simple enough. In Haskell,
 \begin{minipage}{\linewidth}
