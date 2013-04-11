@@ -12,7 +12,7 @@
 	identifierstyle=\color{gray}
 }
 
-\title{Instant Continuation Marks--Just Add $\lambda$}
+\title{Pure Continuation Marks}
 
 \author{Kimball Germane \and Jay McCarthy}
 \institute{Brigham Young University, Provo, Utah}
@@ -61,7 +61,7 @@
 \begin{abstract}
 Continuation marks are a programming language feature which generalizes stack inspection. Despite its usefulness, this feature has not been adopted by languages which rely on stack inspection, e.g., for dynamic security checks. One reason for this neglect may be that continuation marks do not yet enjoy a transformation to the plain $\lambda$-calculus which would allow higher-order languages to provide continuation marks at little cost.
 
-We present direct and CPS-like transformations from the call-by-value $\lambda$-calculus augmented with continuation marks to the pure call-by-value $\lambda$-calculus. We discuss how such transformations simplify the construction of compilers which treat continuation marks correctly. We document how Redex, a domain-specific language for exploring language semantics, aided the discovery of correct transformations. We verify the transformations with the proof of a meaning-preservation theorem. Finally, we apply the transformation to JavaScript.
+We present a transformation from the call-by-value $\lambda$-calculus augmented with continuation marks to the pure call-by-value $\lambda$-calculus. We discuss how such transformations simplify the construction of compilers which treat continuation marks correctly. We document how Redex, a domain-specific language for exploring language semantics, aided the discovery of correct transformations. We offer the sketch proof of a meaning-preservation theorem. Finally, we apply the transformation to JavaScript.
 \end{abstract}
 
 \section{Introduction}
@@ -76,7 +76,7 @@ For example, the ubiquitous JavaScript is an ideal candidate for the addition of
 
 To avoid this roadblock, we instead enhance a core language with facilities to manipulate continuation marks and desugar the enhanced language back to the core. To make our desugaring transformation portable to other languages, we define it over the \lc, the common core of most higher-order languages. With such a transformation, language semanticists do not need to reconcile the feature with other features in the language (provided they have already done so with $\lambda$) and their compiler writers do not need to worry about complicating their implementations (for the same reason).
 
-We begin by further explaining continuation marks in section \ref{sec-continuation-marks}. We then formalize them via the introduction of a core and enhanced language in section \ref{sec-core-and-extension}. We discuss the necessary properties of a meaningful transformation between these languages. We present two transformations of continuation marks--one direct and one CPS-like--to the call-by-value \lc\ in section \ref{sec-transformation}. This is followed by randomized testing using a lightweight mechanized model in section \ref{sec-testing} and a proof of a meaning-preservation theorem in section \ref{sec-proof}. We finally apply it to JavaScript in section \ref{sec-javascript}.
+We begin by further explaining continuation marks in section \ref{sec-continuation-marks}. We then formalize them via the introduction of a core and enhanced language in section \ref{sec-core-and-extension}. We discuss the necessary properties of a meaningful transformation between these languages. We present a transformation of continuation marks to the call-by-value \lc\ in section \ref{sec-transformation}. This is followed by randomized testing using a lightweight mechanized model in section \ref{sec-testing} and a sketch proof of a meaning-preservation theorem in section \ref{sec-proof}. We finally apply it to JavaScript in section \ref{sec-javascript}.
 
 \section{Continuation Marks}
 \label{sec-continuation-marks}
@@ -100,29 +100,7 @@ The traditional, properly-recursive factorial function can be expressed with con
 \end{schemedisplay}
 In this definition, a multiplication pends following the recursive call, so the continuation grows with each.
 
-The evaluation of the factorial of 2, expressed by \scheme|(fac 2)|, proceeds as
-\begin{schemedisplay}
-(fac 2)
-(if (zero? 2) ... (wcm 2 (* 2 (fac (- 2 1)))))
-(wcm 2 (* 2 (fac (- 2 1))))
-(wcm 2 (* 2 (fac 1)))
-(wcm 2 (* 2 (if (zero? 1) ... (wcm 1 (* 1 (fac (- 1 1)))))))
-(wcm 2 (* 2 (wcm 1 (* 1 (fac (- 1 1))))))
-(wcm 2 (* 2 (wcm 1 (* 1 (fac 0)))))
-(wcm 2 (* 2 (wcm 1 (* 1 (if (zero? 0) (begin (print (ccm)) 1) ...)))))
-(wcm 2 (* 2 (wcm 1 (* 1 (begin (print (ccm)) 1)))))
-\end{schemedisplay}
-At this point, the term \scheme|(ccm)| is evaluated. This happens, in effect, by walking the continuation and building a list of the current continuation marks which appear in the \scheme'mark-value' position of a \scheme'wcm' term. In this example, \scheme|(ccm)| evaluates to \scheme|'(1 2)|. Evaluation continues as
-\begin{schemedisplay}
-(wcm 2 (* 2 (wcm 1 (* 1 (begin (print '(1 2)) 1)))))
-(wcm 2 (* 2 (wcm 1 (* 1 (begin 1)))))
-(wcm 2 (* 2 (wcm 1 (* 1 1))))
-(wcm 2 (* 2 (wcm 1 1)))
-(wcm 2 (* 2 1))
-(wcm 2 2)
-2
-\end{schemedisplay}
-The visible effect of the call is
+The effect of evaluating the factorial of 2, expressed as \scheme|(fac 2)|, is 
 \begin{verbatim}
 > (fac 2)
 (1 2)
@@ -142,29 +120,7 @@ This behavior is apparent in the tail-recursive definition of the factorial func
 \end{schemedisplay}
 In this definition, the multiplication is performed before the recursive call and an accumulated value is passed. With no pending computation, the evaluation context devoted to this function is no longer necessary, and is subsumed by the continuation mark directive.
 
-The evaluation of the factorial of 2, here expressed by \scheme|(fac 2 1)|, proceeds as
-\begin{schemedisplay}
-(fac 2 1)
-(if (zero? 2) ... (wcm 2 (fac (- 2 1) (* 2 1))))
-(wcm 2 (fac (- 2 1) (* 2 1)))
-(wcm 2 (fac 1 (* 2 1)))
-(wcm 2 (fac 1 2))
-(wcm 2 (if (zero? 1) ... (wcm 1 (fac (- 1 1) (* 1 2)))))
-(wcm 2 (wcm 1 (fac (- 1 1) (* 1 2))))
-\end{schemedisplay}
-At this point, there is one \scheme'wcm' directive directly nested within another. Behaviorally, the outer one is collapsed \emph{before} evaluation of the inner body proceeds. In essence, it is overwritten. Following this, evaluation continues as
-\begin{schemedisplay}
-(wcm 1 (fac (- 1 1) (* 1 2)))
-(wcm 1 (fac 0 (* 1 2)))
-(wcm 1 (fac 0 2))
-(wcm 1 (if (zero? 0) (begin (print (ccm)) 2) ...))
-(wcm 1 (begin (print (ccm)) 2))
-(wcm 1 (begin (print '(1)) 2))
-(wcm 1 (begin 2))
-(wcm 1 2)
-2
-\end{schemedisplay}
-The visible effect of the call is
+The effect of evaluating the factorial of 2, here expressed by \scheme|(fac 2 1)|, is
 \begin{verbatim}
 > (fac 2 1)
 (1)
@@ -434,7 +390,7 @@ which, expanded, is
 
 \subsection{Some Final Subtleties}
 
-We have not added lists as primitive values to $\cm$ but instead encode lists with other terms in the language. By not relying on a particular characterization of lists in the target language, the dependencies of the transformation remain few, and thus widen its possible application. However, this makes lists themselves subject to the transformation which complicates their manifestation in the core language. The effect of this is that the transformation must deal with the list of continuation marks at the transformed level.
+We have not added lists as primitive values to \cm but instead encode lists with other terms in the language. By not relying on a particular characterization of lists in the target language, the dependencies of the transformation remain few, and thus widen its possible application. However, this makes lists themselves subject to the transformation which complicates their manifestation in the core language. The effect of this is that the transformation must deal with the list of continuation marks at the transformed level.
 
 %Our choice to keep the core language small by omitting lists as primitive values has the consequence of complicating our transform somewhat. Because lists are defined in terms of \lc\ values which are themselves touched by the transform and because of the commutativity property that $\mathcal{C}$ must satisfy, we cannot deal with a list of continuation marks directly--we must instead deal with a transformed list of transformed continuation marks, and manipulation of this list within transformed terms must occur at the transformed level.
 
@@ -459,11 +415,11 @@ Finally, we present the definition of $\mathcal{C}$ over the five syntactic form
 
 The formal transformation of application follows the \scheme'let' version exactly except the definitions of \scheme'rator-value' and \scheme'rand-value' are folded directly in.
 \begin{schemedisplay}
-(lambda (flags)
+(lambda (flag)
   (lambda (marks)
     (((((C[rator-expr] FALSE) marks)
        ((C[rand-expr] FALSE) marks))
-      flags)
+      flag)
      marks)))
 \end{schemedisplay}
 \end{schemedefn}
@@ -511,96 +467,6 @@ Variables have the property that, when substitution occurs, they reconstitute tr
     x))
 \end{schemedisplay}
 \end{schemedefn}
-
-\subsection{Definition of $\mathcal{C}$ in CPS}
-
-Some compilers transform source to continuation-passing style (CPS) in the compilation process. The use of CPS as an intermediate language enables a host of optimization analyses and makes the implementation of otherwise-heavyweight features trivial, such as first-class continuations \cite{appel2007compiling}.
-
-We present a continuation mark transformation integrated in CPS.
-
-\begin{schemedefn}{\scheme|Ccps[(rator-expr rand-expr)]|}
-\begin{schemedisplay}
-(lambda (kont)
-   (lambda (flag)
-     (lambda (marks)
-       (((Ccps[rator-expr]
-          (lambda (rator-value)
-            (((Ccps[rand-expr]
-               (lambda (rand-value)
-                 ((((rator-value rand-value) kont) flag) marks)))
-              FALSE)
-             marks)))
-         FALSE)
-        marks))))
-\end{schemedisplay}
-\end{schemedefn}
-
-\begin{schemedefn}{\scheme|C[(wcm mark-expr body-expr)]|}
-\begin{schemedisplay}
-(lambda (kont)
-  (lambda (flag)
-    (lambda (marks)
-      (((Ccps[mark-expr]
-          (lambda (mark-value) 
-            ((lambda (rest-marks) 
-               (((Ccps[body-expr] kont) TRUE) Chcps[((CONS mark-value) rest-marks)]))
-             ((flag Chcps[(SND marks)]) marks))))
-        FALSE)
-       marks))))
-\end{schemedisplay}
-\end{schemedefn}
-
-\begin{schemedefn}{\scheme|Ccps[(ccm)]|}
-\begin{schemedisplay}
-(lambda (kont)
-  (lambda (flag)
-    (lambda (marks)
-      (kont marks))))
-\end{schemedisplay}
-\end{schemedefn}
-
-\noindent
-\begin{minipage}{0.5\linewidth}
-\begin{schemedefn}{\scheme|Ccps[v]|=\scheme|Ccps[(lambda (x) e)]|}
-\begin{schemedisplay}
-(lambda (kont)
-  (lambda (flag)
-    (lambda (marks)
-      (kont (lambda (x) Ccps[e])))))
-\end{schemedisplay}
-\end{schemedefn}
-\end{minipage}
-\begin{minipage}{0.5\linewidth}
-\begin{schemedefn}{\scheme|Ccps[x]|}
-\begin{schemedisplay}
-(lambda (kont)
-  (lambda (flag)
-    (lambda (marks)
-      (kont x))))
-\end{schemedisplay}
-\end{schemedefn}
-\end{minipage}
-\\
-\\
-
-We include corresponding definitions for $\mathcal{C}'$ and $\hat{\mathcal{C}}$.
-\\
-\\
-\noindent
-\begin{minipage}{0.5\linewidth}
-\begin{schemedefn}{\scheme|Cpcps[(lambda (x) e)]|}
-\begin{schemedisplay}
-(lambda (x) Ccps[e])
-\end{schemedisplay}
-\end{schemedefn}
-\end{minipage}
-\begin{minipage}{0.5\linewidth}
-\begin{schemedefn}{\scheme|Chcps[p]|}
-\begin{schemedisplay}
-(((Ccps[p] (lambda (x) x)) FALSE) Cpcps[nil])
-\end{schemedisplay}
-\end{schemedefn}
-\end{minipage}
 
 \subsection{Example}
 
@@ -725,29 +591,32 @@ Redex provides convenient functions to initiate random testing.
 (redex-check lambdacm e (meaning-preserved? e))
 \end{schemedisplay}
 
-\scheme'redex-check' generates random terms according to the grammar of the given language (\scheme'lambdacm') and category (\scheme'e') in search of counterexamples to the predicate. It gradually increases the size of the terms it generates, which we found useful in obtaining minimal test cases. We subjected both the direct and CPS transformation to random testing and each eventually withstood 10,000 random tests. Interestingly, no incorrect transformation withstood more than 500 random tests before failing.
+\scheme'redex-check' generates random terms according to the grammar of the given language (\scheme'lambdacm') and term category (\scheme'e') in search of counterexamples to the predicate. It gradually increases the size of the terms it generates, which we found useful in obtaining minimal test cases. We subjected the transformation to random testing. We used the specific counterexamples to guide modifications to the transform until it  withstood 10,000 random tests. Interestingly, no incorrect transformation withstood more than 500 random tests before failing.
 
 \section{Proof}
 \label{sec-proof}
 
-With a reasonable intuition and definitions hardened by random testing, we prove correctness of the continuation-passing variant of the transform, $\mathcal{C}_{\mathrm{cps}}$.
+With a reasonable intuition and definitions hardened by random testing, we lightly stetch a proof of the correctness of $\mathcal{C}$.
 
-Because of space limitations, we offer only a sketch of the proof here. The full proof can be found in a technical report\footnote{\texttt{http://students.cs.byu.edu/\textasciitilde{}krgerman/esop2013-technical-report.pdf}}.
+%Because of space limitations, we offer only a sketch of the proof here. The full proof can be found in a technical report\footnote{\texttt{http://students.cs.byu.edu/\textasciitilde{}krgerman/esop2013-technical-report.pdf}}.
 
 We begin by expressing the commutativity property we have sought to preserve as a theorem:
 
 \begin{theorem}
-For all programs $p\in\lambda_{cm}$, $\Chcps{\mathrm{eval}_{cm}(p)}=\mathrm{eval}_{v}(\Chcps{p})$.
+For all programs $p\in\lambda_{cm}$, $\Ch{\mathrm{eval}_{cm}(p)}=\mathrm{eval}_{v}(\Ch{p})$.
 \end{theorem}
 
-We prove this by overloading $\mathcal{C}_{\mathrm{cps}}$ to accommodate first evaluation contexts and then context-term pairs (denoted in unorthodox style) by
-\begin{schemedefn}{\scheme|Ccps[E[e]]|}
+We prove this by overloading $\mathcal{C}$ to accommodate first evaluation contexts and then context-term pairs (where $E[e]$ represents $(E,e)$) by
+\begin{schemedefn}{\scheme|C[E[e]]|}
 \begin{schemedisplay}
-(((Ccps[e] Ccps[E]) xiE) Cpcps[chiE])
+C[E][((C[e] xiE) Cp[chiE])]
 \end{schemedisplay}
 \end{schemedefn}
 \noindent
-which allows us to formally relate $E[e]$ and $\Ccps{E[e]}$. We then prove a lemma
+which allows us to formally relate $E[e]$ and $\C{E[e]}$.
+%For example, $\C{\app{\abs{x}{x}}{\hole}[42]}=\C{\app{\abs{x}{x}}{\hole}}[\app{\app{\C{42}}{\xi(\app{\abs{x}{x}}{\hole})}}{\Cp{\chi(\app{\abs{x}{x}}{\hole})}}]$.
+
+We then prove a lemma
 \begin{lemma}[Simulation]
 For all contexts $E\in\lambda_{cm}$ and expressions $e\in\lambda_{cm}$, $E[e]\cmrr E'[e']\implies\C{E[e]}\lvrrs\C{E'[e']}$
 \end{lemma}
@@ -879,9 +748,9 @@ is one way, using our approach. The factorial functions leveraging this implemen
 
 Continuation marks support a bevy of instrumentation tools and advanced language features in a generalized, portable way. Despite their demonstrated utility, they have not yet found their way into most languages. A verified characterization of continuation marks in a pure computational language provides implementors of higher-order languages a correct compiler for continuation marks which we have demonstrated for JavaScript.
 
-Our macro-style approach would be more useful if deployed as a proper macro, but this requires a hygienic macro system which many languages lack. \texttt{sweet.js} is just such a system for JavaScript in early stages and is ideal for our transformation.
+%Our macro-style approach would be more useful if deployed as a proper macro, but this requires a hygienic macro system which many languages lack. \texttt{sweet.js} is just such a system for JavaScript in early stages and is ideal for our transformation.
 
-Although we used some level of mechanization in the proof of the theorem, a formal proof assistant, such as Coq \cite{barras1997coq}, would increase confidence out of the gate that the transformation was correct.
+%Although we used some level of mechanization in the proof of the theorem, a formal proof assistant, such as Coq \cite{barras1997coq}, would increase confidence out of the gate that the transformation was correct.
 
 \bibliographystyle{plain}
 \bibliography{paper}
